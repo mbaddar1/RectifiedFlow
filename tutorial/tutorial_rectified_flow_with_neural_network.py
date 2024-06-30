@@ -114,7 +114,7 @@ class MLP(nn.Module):
         return x
 
 
-class RectifiedFlow():
+class RectifiedFlowNN():
     def __init__(self, model=None, num_steps=1000):
         self.model = model
         self.N = num_steps
@@ -152,6 +152,8 @@ if __name__ == '__main__':
     DOT_SIZE = 4
     COMP = 3
     N = 10000
+    model_type = "nn" # can be nn or tt
+
     # initial_mix = Categorical(torch.tensor([1 / COMP for i in range(COMP)]))
     # initial_comp = MultivariateNormal(torch.tensor(
     #     [[D * np.sqrt(3) / 2., D / 2.], [-D * np.sqrt(3) / 2., D / 2.], [0.0, - D * np.sqrt(3) / 2.]]).float(),
@@ -193,17 +195,22 @@ if __name__ == '__main__':
     x_1 = samples_1.detach().clone()[torch.randperm(len(samples_1))]
     x_pairs = torch.stack([x_0, x_1], dim=1)
 
-    iterations = 10000
-    batch_size = 2048
-    input_dim = 2
+    if model_type == "nn":
+        iterations = 10000
+        batch_size = 2048
+        input_dim = 2
+    elif model_type == "tt":
+        pass
+    else:
+        raise ValueError(f"Unknown model_type : {model_type}")
 
-    rectified_flow_1 = RectifiedFlow(model=MLP(input_dim, hidden_num=100), num_steps=100)
-    optimizer = torch.optim.Adam(rectified_flow_1.model.parameters(), lr=5e-3)
+    rectified_flow_nn_1 = RectifiedFlowNN(model=MLP(input_dim, hidden_num=100), num_steps=100)
+    optimizer = torch.optim.Adam(rectified_flow_nn_1.model.parameters(), lr=5e-3)
 
-    rectified_flow_1, loss_curve = train_rectified_flow(rectified_flow_1, optimizer, x_pairs, batch_size, iterations)
+    rectified_flow_nn_1, loss_curve = train_rectified_flow(rectified_flow_nn_1, optimizer, x_pairs, batch_size, iterations)
     plt.plot(np.linspace(0, iterations, iterations + 1), loss_curve[:(iterations + 1)])
     plt.title('Training Loss Curve')
     plt.savefig("loss_curve_recflow_1.png")
 
     print("Sampling")
-    draw_plot(rectified_flow_1, z0=initial_model.sample([2000]), z1=samples_1.detach().clone(), N=1000)
+    draw_plot(rectified_flow_nn_1, z0=initial_model.sample([2000]), z1=samples_1.detach().clone(), N=1000)
