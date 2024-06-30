@@ -32,6 +32,7 @@ from torch.distributions.multivariate_normal import MultivariateNormal
 from torch.distributions.mixture_same_family import MixtureSameFamily
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+from functional_tt_fabrique import orthpoly,Extended_TensorTrain
 
 
 @torch.no_grad()
@@ -152,7 +153,7 @@ if __name__ == '__main__':
     DOT_SIZE = 4
     COMP = 3
     N = 10000
-    model_type = "nn" # can be nn or tt
+    model_type = "tt"  # can be nn or tt
 
     # initial_mix = Categorical(torch.tensor([1 / COMP for i in range(COMP)]))
     # initial_comp = MultivariateNormal(torch.tensor(
@@ -196,21 +197,36 @@ if __name__ == '__main__':
     x_pairs = torch.stack([x_0, x_1], dim=1)
 
     if model_type == "nn":
+        print("Training nn-recflow")
         iterations = 10000
         batch_size = 2048
         input_dim = 2
+        rectified_flow_nn_1 = RectifiedFlowNN(model=MLP(input_dim, hidden_num=100), num_steps=100)
+        optimizer = torch.optim.Adam(rectified_flow_nn_1.model.parameters(), lr=5e-3)
+
+        rectified_flow_nn_1, loss_curve = train_rectified_flow(rectified_flow_nn_1, optimizer, x_pairs, batch_size,
+                                                               iterations)
+        plt.plot(np.linspace(0, iterations, iterations + 1), loss_curve[:(iterations + 1)])
+        plt.title('Training Loss Curve')
+        plt.savefig("loss_curve_recflow_1.png")
+        print("Sampling")
+        draw_plot(rectified_flow_nn_1, z0=initial_model.sample([2000]), z1=samples_1.detach().clone(), N=1000)
     elif model_type == "tt":
-        pass
+        print("training tt-recflow")
+        d: int = 2
+        tt_rank = 6
+        degree = 30
+        limits = (-20, 20)
+        degrees = [degree] * (d + 1)  # hotfix by charles that made the GMM work
+        ranks = [1] + [tt_rank] * d + [1]
+        domain = [list(limits) for _ in range(d)] + [[0, 1]]
+        op = orthpoly(degrees, domain)
+        ETTs = [Extended_TensorTrain(op, ranks) for i in range(d)]
+        # ETT = Extended_TensorTrain(op, ranks)
+        # ALS parameters
+        reg_coeff = 1e-20
+        iterations = 40
+        tol = 5e-10
+
     else:
         raise ValueError(f"Unknown model_type : {model_type}")
-
-    rectified_flow_nn_1 = RectifiedFlowNN(model=MLP(input_dim, hidden_num=100), num_steps=100)
-    optimizer = torch.optim.Adam(rectified_flow_nn_1.model.parameters(), lr=5e-3)
-
-    rectified_flow_nn_1, loss_curve = train_rectified_flow(rectified_flow_nn_1, optimizer, x_pairs, batch_size, iterations)
-    plt.plot(np.linspace(0, iterations, iterations + 1), loss_curve[:(iterations + 1)])
-    plt.title('Training Loss Curve')
-    plt.savefig("loss_curve_recflow_1.png")
-
-    print("Sampling")
-    draw_plot(rectified_flow_nn_1, z0=initial_model.sample([2000]), z1=samples_1.detach().clone(), N=1000)
