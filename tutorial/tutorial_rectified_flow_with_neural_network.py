@@ -32,7 +32,7 @@ from torch.distributions.multivariate_normal import MultivariateNormal
 from torch.distributions.mixture_same_family import MixtureSameFamily
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-from functional_tt_fabrique import orthpoly,Extended_TensorTrain
+from functional_tt_fabrique import orthpoly, Extended_TensorTrain
 
 
 @torch.no_grad()
@@ -75,7 +75,14 @@ def draw_plot(rectified_flow, z0, z1, N=None):
     plt.savefig("trajectory.png")
 
 
-def train_rectified_flow(rectified_flow, optimizer, pairs, batchsize, inner_iters):
+def get_train_tuple(z0=None, z1=None):
+    t = torch.rand((z1.shape[0], 1))
+    z_t = t * z1 + (1. - t) * z0
+    target = z1 - z0
+    return z_t, t, target
+
+
+def train_rectified_flow_nn(rectified_flow_nn, optimizer, pairs, batchsize, inner_iters):
     loss_curve = []
     for i in tqdm(range(inner_iters + 1), desc="training"):
         optimizer.zero_grad()
@@ -83,17 +90,17 @@ def train_rectified_flow(rectified_flow, optimizer, pairs, batchsize, inner_iter
         batch = pairs[indices]
         z0 = batch[:, 0].detach().clone()
         z1 = batch[:, 1].detach().clone()
-        z_t, t, target = rectified_flow.get_train_tuple(z0=z0, z1=z1)
+        z_t, t, target = rectified_flow_nn.get_train_tuple(z0=z0, z1=z1)
 
-        pred = rectified_flow.model(z_t, t)
+        pred = rectified_flow_nn.model(z_t, t)
         loss = (target - pred).view(pred.shape[0], -1).abs().pow(2).sum(dim=1)
         loss = loss.mean()
         loss.backward()
 
         optimizer.step()
-        loss_curve.append(np.log(loss.item()))  ## to store the loss curve
+        loss_curve.append(np.log(loss.item()))  # to store the loss curve
 
-    return rectified_flow, loss_curve
+    return rectified_flow_nn, loss_curve
 
 
 class MLP(nn.Module):
@@ -115,17 +122,20 @@ class MLP(nn.Module):
         return x
 
 
-class RectifiedFlowNN():
+class RectifiedFlowTT:
+    def __init__(self, tt_rank, basis_degree, limits, data_dim):
+        basis_degrees = [basis_degree] * (data_dim + 1)  # hotfix by charles that made the GMM work
+        ranks = [1] + [tt_rank] * data_dim + [1]
+        domain = [list(limits) for _ in range(data_dim)] + [[0, 1]]
+        print("Generating Orthopoly Func.(This might take a couple of secs)")
+        op = orthpoly(basis_degrees, domain)
+        self.ETTs = [Extended_TensorTrain(op, ranks) for i in range(data_dim)]
+
+
+class RectifiedFlowNN:
     def __init__(self, model=None, num_steps=1000):
         self.model = model
         self.N = num_steps
-
-    def get_train_tuple(self, z0=None, z1=None):
-        t = torch.rand((z1.shape[0], 1))
-        z_t = t * z1 + (1. - t) * z0
-        target = z1 - z0
-
-        return z_t, t, target
 
     @torch.no_grad()
     def sample_ode(self, z0=None, N=None):
@@ -144,6 +154,27 @@ class RectifiedFlowNN():
             z = z.detach().clone() + pred * dt
             traj.append(z.detach().clone())
         return traj
+
+
+def train_rectified_flow_tt(rectified_flow_tt: RectifiedFlowTT, x0, x1, reg_coeff=1e-20, iterations=40, tol=5e-10,
+                            rule=None):
+    z_t, t, target = get_train_tuple(z0=x0, z1=x1)
+    z_t_aug = torch.concat([z_t, t], dim=1)
+    for i, ETT in enumerate(rectified_flow_tt.ETTs):
+        print(f"for output d = {i}")
+        y_i = target[:, i].view(-1, 1)
+        ETT.fit(
+            x=z_t_aug,
+            y=y_i,
+            iterations=iterations,
+            rule=rule,
+            tol=tol,
+            verboselevel=1,
+            reg_param=reg_coeff,
+        )
+        ETT.tt.set_core(x0.shape[1])
+    print("recflow-tt training finished")
+    return rectified_flow_tt
 
 
 if __name__ == '__main__':
@@ -204,29 +235,28 @@ if __name__ == '__main__':
         rectified_flow_nn_1 = RectifiedFlowNN(model=MLP(input_dim, hidden_num=100), num_steps=100)
         optimizer = torch.optim.Adam(rectified_flow_nn_1.model.parameters(), lr=5e-3)
 
-        rectified_flow_nn_1, loss_curve = train_rectified_flow(rectified_flow_nn_1, optimizer, x_pairs, batch_size,
-                                                               iterations)
+        rectified_flow_nn_1, loss_curve = train_rectified_flow_nn(rectified_flow_nn_1, optimizer, x_pairs, batch_size,
+                                                                  iterations)
         plt.plot(np.linspace(0, iterations, iterations + 1), loss_curve[:(iterations + 1)])
         plt.title('Training Loss Curve')
         plt.savefig("loss_curve_recflow_1.png")
         print("Sampling")
         draw_plot(rectified_flow_nn_1, z0=initial_model.sample([2000]), z1=samples_1.detach().clone(), N=1000)
     elif model_type == "tt":
-        print("training tt-recflow")
-        d: int = 2
+        print("Creating a RecFlow TT object")
         tt_rank = 6
-        degree = 30
+        basis_degree = 30
         limits = (-20, 20)
-        degrees = [degree] * (d + 1)  # hotfix by charles that made the GMM work
-        ranks = [1] + [tt_rank] * d + [1]
-        domain = [list(limits) for _ in range(d)] + [[0, 1]]
-        op = orthpoly(degrees, domain)
-        ETTs = [Extended_TensorTrain(op, ranks) for i in range(d)]
-        # ETT = Extended_TensorTrain(op, ranks)
-        # ALS parameters
+        recflow_tt = RectifiedFlowTT(tt_rank=tt_rank, basis_degree=basis_degree, data_dim=2, limits=limits)
+
+        print("training tt-recflow")
         reg_coeff = 1e-20
         iterations = 40
         tol = 5e-10
+        train_rectified_flow_tt(rectified_flow_tt=recflow_tt, x0=samples_0, x1=samples_1)
+
+        # get X, and y
+
 
     else:
         raise ValueError(f"Unknown model_type : {model_type}")
