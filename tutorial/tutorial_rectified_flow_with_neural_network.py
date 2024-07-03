@@ -22,7 +22,7 @@ We generate $\pi_0$ and $\pi_1$ as two Gaussian mixture models with different mo
 We sample 10000 data points from $\pi_0$ and $\pi_1$, respectively,
 and store them in ```samples_0```, ```samples_1```.
 """
-
+import random
 import torch
 import numpy as np
 import torch.nn as nn
@@ -34,9 +34,24 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from functional_tt_fabrique import orthpoly, Extended_TensorTrain
 
+# Set seed
+SEED = 42
+random.seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
+
 
 @torch.no_grad()
 def draw_plot(rectified_flow, z0, z1, N=None):
+    assert isinstance(rectified_flow, (RectifiedFlowTT, RectifiedFlowNN))
+    if isinstance(rectified_flow, RectifiedFlowTT):
+        suffix = "tt"
+    elif isinstance(rectified_flow, RectifiedFlowNN):
+        suffix = "nn"
+    else:
+        raise ValueError(f"Unsupported recflow model type : {type(rectified_flow)}")
+
+    print(f"Drawing plot for model of class : {type(rectified_flow)}")
     traj = rectified_flow.sample_ode(z0=z0, N=N)
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
     fig.suptitle('Actual vs Generated Distribution')
@@ -58,7 +73,7 @@ def draw_plot(rectified_flow, z0, z1, N=None):
     ax3.set_title('Generated')
     ax3.scatter(traj[-1][:, 0].cpu().numpy(), traj[-1][:, 1].cpu().numpy(), color='blue')
     plt.tight_layout()
-    plt.savefig("actual_vs_generated_samples.png")
+    plt.savefig(f"actual_vs_generated_samples_{suffix}.png")
 
     plt.clf()
 
@@ -68,11 +83,13 @@ def draw_plot(rectified_flow, z0, z1, N=None):
     plt.xlim(-M, M)
     plt.ylim(-M, M)
     plt.axis('equal')
-    for i in range(30):
-        plt.plot(traj_particles[:, i, 0], traj_particles[:, i, 1])
+    for i in tqdm(range(30), desc="generating trajectory"):
+        x = traj_particles[:, i, 0]
+        y = traj_particles[:, i, 1]
+        plt.plot(x, y)
     plt.title('Transport Trajectory')
     plt.tight_layout()
-    plt.savefig("trajectory.png")
+    plt.savefig(f"trajectory_{suffix}.png")
 
 
 def get_train_tuple(z0=None, z1=None):
@@ -84,13 +101,13 @@ def get_train_tuple(z0=None, z1=None):
 
 def train_rectified_flow_nn(rectified_flow_nn, optimizer, pairs, batchsize, inner_iters):
     loss_curve = []
-    for i in tqdm(range(inner_iters + 1), desc="training"):
+    for i in tqdm(range(inner_iters + 1), desc="training recflow-nn "):
         optimizer.zero_grad()
         indices = torch.randperm(len(pairs))[:batchsize]
         batch = pairs[indices]
         z0 = batch[:, 0].detach().clone()
         z1 = batch[:, 1].detach().clone()
-        z_t, t, target = rectified_flow_nn.get_train_tuple(z0=z0, z1=z1)
+        z_t, t, target = get_train_tuple(z0=z0, z1=z1)
 
         pred = rectified_flow_nn.model(z_t, t)
         loss = (target - pred).view(pred.shape[0], -1).abs().pow(2).sum(dim=1)
@@ -130,6 +147,30 @@ class RectifiedFlowTT:
         print("Generating Orthopoly Func.(This might take a couple of secs)")
         op = orthpoly(basis_degrees, domain)
         self.ETTs = [Extended_TensorTrain(op, ranks) for i in range(data_dim)]
+
+    def sample_ode(self, z0: torch.Tensor, N: int):
+        dt = 1. / N
+        traj = []  # to store the trajectory
+        z = z0.detach().clone()
+        batchsize = z.shape[0]
+
+        traj.append(z.detach().clone())
+        for i in tqdm(range(N), desc="generate tt-recflow trajectory"):
+            t = torch.ones((batchsize, 1)) * i / N
+            pred = self.v(z, t)
+            z = z.detach().clone() + pred * dt
+            traj.append(z.detach().clone())
+        return traj
+
+    def v(self, zt, t) -> torch.Tensor:
+        data_dim = zt.shape[1]
+        zt_aug = torch.cat([zt, t], dim=1)
+        pred_list = []
+        for d in range(data_dim):
+            pred_vec = self.ETTs[d](zt_aug).view(-1, 1)
+            pred_list.append(pred_vec)
+        pred_tensor = torch.cat(tensors=pred_list, dim=1)
+        return pred_tensor
 
 
 class RectifiedFlowNN:
@@ -239,7 +280,7 @@ if __name__ == '__main__':
                                                                   iterations)
         plt.plot(np.linspace(0, iterations, iterations + 1), loss_curve[:(iterations + 1)])
         plt.title('Training Loss Curve')
-        plt.savefig("loss_curve_recflow_1.png")
+        plt.savefig("loss_curve_recflow_nn_1.png")
         print("Sampling")
         draw_plot(rectified_flow_nn_1, z0=initial_model.sample([2000]), z1=samples_1.detach().clone(), N=1000)
     elif model_type == "tt":
@@ -248,13 +289,12 @@ if __name__ == '__main__':
         basis_degree = 30
         limits = (-20, 20)
         recflow_tt = RectifiedFlowTT(tt_rank=tt_rank, basis_degree=basis_degree, data_dim=2, limits=limits)
-
         print("training tt-recflow")
         reg_coeff = 1e-20
         iterations = 40
         tol = 5e-10
         train_rectified_flow_tt(rectified_flow_tt=recflow_tt, x0=samples_0, x1=samples_1)
-
+        draw_plot(recflow_tt, z0=initial_model.sample([2000]), z1=samples_1.detach().clone(), N=1000)
         # get X, and y
 
 
