@@ -220,6 +220,7 @@ def train_rectified_flow_tt(rectified_flow_tt: RectifiedFlowTT, x0, x1, reg_coef
     print("recflow-tt training finished")
     return rectified_flow_tt
 
+
 # Main
 if __name__ == '__main__':
     D = 10.
@@ -228,7 +229,7 @@ if __name__ == '__main__':
     DOT_SIZE = 4
     COMP = 3
     n_samples = 10000
-    model_type = "nn"  # can be nn or tt
+    model_type = "tt"  # can be nn or tt
     dataset_name = "swissroll"
     initial_model = MultivariateNormal(loc=torch.zeros(2), covariance_matrix=torch.eye(2))
     samples_0 = initial_model.sample(torch.Size([n_samples]))
@@ -253,38 +254,49 @@ if __name__ == '__main__':
     x_1 = samples_1.detach().clone()[torch.randperm(len(samples_1))]
     x_pairs = torch.stack([x_0, x_1], dim=1)
 
+    recflow_model = None
     if model_type == "nn":
         print("Training nn-recflow")
         iterations = 10000
         batch_size = 2048
         input_dim = 2
-        rectified_flow_nn_1 = RectifiedFlowNN(model=MLP(input_dim, hidden_num=100), num_steps=100)
-        optimizer = torch.optim.Adam(rectified_flow_nn_1.model.parameters(), lr=5e-3)
+        rectified_model = RectifiedFlowNN(model=MLP(input_dim, hidden_num=100), num_steps=100)
+        optimizer = torch.optim.Adam(rectified_model.model.parameters(), lr=5e-3)
 
-        rectified_flow_nn_1, loss_curve = train_rectified_flow_nn(rectified_flow_nn_1, optimizer, x_pairs, batch_size,
-                                                                  iterations)
+        rectified_model, loss_curve = train_rectified_flow_nn(rectified_model, optimizer, x_pairs, batch_size,
+                                                              iterations)
         plt.plot(np.linspace(0, iterations, iterations + 1), loss_curve[:(iterations + 1)])
         plt.title('Training Loss Curve')
         plt.savefig("loss_curve_recflow_nn_1.png")
-        print("Sampling")
-        draw_plot(rectified_flow_nn_1, z0=initial_model.sample([2000]), z1=samples_1.detach().clone(), N=1000)
-        # Calculate samples loss via sinkhorn
-        samples_loss = SamplesLoss(loss="sinkhorn")
 
     elif model_type == "tt":
         print("Creating a RecFlow TT object")
         tt_rank = 6
         basis_degree = 30
         limits = (-20, 20)
-        recflow_tt = RectifiedFlowTT(tt_rank=tt_rank, basis_degree=basis_degree, data_dim=2, limits=limits)
+        recflow_model = RectifiedFlowTT(tt_rank=tt_rank, basis_degree=basis_degree, data_dim=2, limits=limits)
         print("training tt-recflow")
         reg_coeff = 1e-20
         iterations = 40
         tol = 5e-10
-        train_rectified_flow_tt(rectified_flow_tt=recflow_tt, x0=samples_0, x1=samples_1)
-        draw_plot(recflow_tt, z0=initial_model.sample([2000]), z1=samples_1.detach().clone(), N=1000)
-        # get X, and y
-
-
+        train_rectified_flow_tt(rectified_flow_tt=recflow_model, x0=samples_0, x1=samples_1)
     else:
-        raise ValueError(f"Unknown model_type : {model_type}")
+        raise ValueError(f"Unsupported recflow model type : {type(model_type)}")
+
+    assert recflow_model is not None, "recflow_model is not initialized or trained"
+    print("Drawing generated samples vs actual and trajectories")
+    draw_plot(recflow_model, z0=initial_model.sample([2000]), z1=samples_1.detach().clone(), N=1000)
+    print("Generating sinkhorn values")
+    samples_loss = SamplesLoss(loss="sinkhorn")
+    samples_11 = get_target_samples(dataset_name=dataset_name, n_samples=n_samples)
+    samples_12 = get_target_samples(dataset_name=dataset_name, n_samples=n_samples)
+    ref_sinkhorn = samples_loss(samples_11, samples_12)
+    print(f"ref sinkhorn value = {ref_sinkhorn}")
+    generated_sample = recflow_model.sample_ode(z0=initial_model.sample(torch.Size([n_samples])), N=1000)[-1]
+    gen_sinkhorn_1 = samples_loss(samples_11,generated_sample)
+    gen_sinkhorn_2 = samples_loss(samples_12,generated_sample)
+    gen_sinkhorn_avg = (gen_sinkhorn_1+gen_sinkhorn_2)/2.0
+    print(f"generated sinkhorn 1 = {gen_sinkhorn_1}")
+    print(f"generated sinkhorn 2 = {gen_sinkhorn_2}")
+    print(f"generated sinkhorn avg = {gen_sinkhorn_avg}")
+    print("Finished")
