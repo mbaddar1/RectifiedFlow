@@ -220,7 +220,7 @@ def train_rectified_flow_tt(rectified_flow_tt: RectifiedFlowTT, x0, x1, reg_coef
     print("recflow-tt training finished")
     return rectified_flow_tt
 
-
+# Main
 if __name__ == '__main__':
     D = 10.
     M = D + 5
