@@ -228,7 +228,7 @@ if __name__ == '__main__':
     DOT_SIZE = 4
     COMP = 3
     n_samples = 10000
-    model_type = "tt"  # can be nn or tt
+    model_type = "nn"  # can be nn or tt
     dataset_name = "swissroll"
     initial_model = MultivariateNormal(loc=torch.zeros(2), covariance_matrix=torch.eye(2))
     samples_0 = initial_model.sample(torch.Size([n_samples]))
