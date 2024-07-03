@@ -35,7 +35,8 @@ from tqdm import tqdm
 from functional_tt_fabrique import orthpoly, Extended_TensorTrain
 from geomloss import SamplesLoss
 
-from utils.samples_generation import get_target_samples
+from utils.utils import get_target_samples, filter_tensor
+
 
 # Set seed
 #
@@ -261,11 +262,11 @@ if __name__ == '__main__':
         iterations = 10000
         batch_size = 2048
         input_dim = 2
-        rectified_model = RectifiedFlowNN(model=MLP(input_dim, hidden_num=100), num_steps=100)
-        optimizer = torch.optim.Adam(rectified_model.model.parameters(), lr=5e-3)
+        recflow_model = RectifiedFlowNN(model=MLP(input_dim, hidden_num=100), num_steps=100)
+        optimizer = torch.optim.Adam(recflow_model.model.parameters(), lr=5e-3)
 
-        rectified_model, loss_curve = train_rectified_flow_nn(rectified_model, optimizer, x_pairs, batch_size,
-                                                              iterations)
+        recflow_model, loss_curve = train_rectified_flow_nn(recflow_model, optimizer, x_pairs, batch_size,
+                                                            iterations)
         plt.plot(np.linspace(0, iterations, iterations + 1), loss_curve[:(iterations + 1)])
         plt.title('Training Loss Curve')
         plt.savefig("loss_curve_recflow_nn_1.png")
@@ -293,10 +294,16 @@ if __name__ == '__main__':
     samples_12 = get_target_samples(dataset_name=dataset_name, n_samples=n_samples)
     ref_sinkhorn = samples_loss(samples_11, samples_12)
     print(f"ref sinkhorn value = {ref_sinkhorn}")
+
     generated_sample = recflow_model.sample_ode(z0=initial_model.sample(torch.Size([n_samples])), N=1000)[-1]
-    gen_sinkhorn_1 = samples_loss(samples_11,generated_sample)
-    gen_sinkhorn_2 = samples_loss(samples_12,generated_sample)
-    gen_sinkhorn_avg = (gen_sinkhorn_1+gen_sinkhorn_2)/2.0
+    generated_sample_filtered = filter_tensor(x=generated_sample)
+    max_ = torch.max(generated_sample_filtered, dim=0)
+    min_ = torch.min(generated_sample_filtered, dim=0)
+    print(f"max = {max_}")
+    print(f"min = {min_}")
+    gen_sinkhorn_1 = samples_loss(samples_11, generated_sample_filtered)
+    gen_sinkhorn_2 = samples_loss(samples_12, generated_sample_filtered)
+    gen_sinkhorn_avg = (gen_sinkhorn_1 + gen_sinkhorn_2) / 2.0
     print(f"generated sinkhorn 1 = {gen_sinkhorn_1}")
     print(f"generated sinkhorn 2 = {gen_sinkhorn_2}")
     print(f"generated sinkhorn avg = {gen_sinkhorn_avg}")
