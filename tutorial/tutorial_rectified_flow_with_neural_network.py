@@ -38,10 +38,11 @@ from geomloss import SamplesLoss
 from utils.samples_generation import get_target_samples
 
 # Set seed
-SEED = 42
-random.seed(SEED)
-np.random.seed(SEED)
-torch.manual_seed(SEED)
+#
+# SEED = 42
+# random.seed(SEED)
+# np.random.seed(SEED)
+# torch.manual_seed(SEED)
 
 
 @torch.no_grad()
