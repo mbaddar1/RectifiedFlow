@@ -33,6 +33,9 @@ from torch.distributions.mixture_same_family import MixtureSameFamily
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from functional_tt_fabrique import orthpoly, Extended_TensorTrain
+from geomloss import SamplesLoss
+
+from utils.samples_generation import get_target_samples
 
 # Set seed
 SEED = 42
@@ -224,31 +227,13 @@ if __name__ == '__main__':
     VAR = 0.3
     DOT_SIZE = 4
     COMP = 3
-    N = 10000
+    n_samples = 10000
     model_type = "tt"  # can be nn or tt
-
-    # initial_mix = Categorical(torch.tensor([1 / COMP for i in range(COMP)]))
-    # initial_comp = MultivariateNormal(torch.tensor(
-    #     [[D * np.sqrt(3) / 2., D / 2.], [-D * np.sqrt(3) / 2., D / 2.], [0.0, - D * np.sqrt(3) / 2.]]).float(),
-    #                                   VAR * torch.stack([torch.eye(2) for i in range(COMP)]))
-    # initial_model = MixtureSameFamily(initial_mix, initial_comp)
+    dataset_name = "swissroll"
     initial_model = MultivariateNormal(loc=torch.zeros(2), covariance_matrix=torch.eye(2))
-    samples_0 = initial_model.sample(torch.Size([N]))
+    samples_0 = initial_model.sample(torch.Size([n_samples]))
 
-    # target_mix = Categorical(torch.tensor([1 / COMP for i in range(COMP)]))
-    # target_comp = MultivariateNormal(torch.tensor(
-    #     [[D * np.sqrt(3) / 2., - D / 2.], [-D * np.sqrt(3) / 2., - D / 2.], [0.0, D * np.sqrt(3) / 2.]]).float(),
-    #                                  VAR * torch.stack([torch.eye(2) for i in range(COMP)]))
-    # target_model = MixtureSameFamily(target_mix, target_comp)
-    # samples_1 = target_model.sample(torch.Size([N]))
-    # Swissroll
-    samples_1 = torch.tensor(make_swiss_roll(n_samples=N, noise=1e-1)[0][:, [0, 2]] / 2.0, dtype=torch.float32)
-    # Circles
-    # samples_1 = torch.tensor(make_circles(n_samples=N, shuffle=True, factor=0.9, noise=0.05)[0] * 5.0,dtype=torch.float32)
-    # Blobs
-    # samples_1 = torch.tensor(make_blobs(n_samples=N, n_features=2, centers=[[-1, -1], [0, 0], [1, 1]])[0],
-    #                          dtype=torch.float32)
-    # print('Shape of the samples:', samples_0.shape, samples_1.shape)
+    samples_1 = get_target_samples(dataset_name=dataset_name, n_samples=n_samples)
 
     plt.figure(figsize=(4, 4))
     plt.xlim(-M, M)
@@ -283,6 +268,9 @@ if __name__ == '__main__':
         plt.savefig("loss_curve_recflow_nn_1.png")
         print("Sampling")
         draw_plot(rectified_flow_nn_1, z0=initial_model.sample([2000]), z1=samples_1.detach().clone(), N=1000)
+        # Calculate samples loss via sinkhorn
+        samples_loss = SamplesLoss(loss="sinkhorn")
+
     elif model_type == "tt":
         print("Creating a RecFlow TT object")
         tt_rank = 6
