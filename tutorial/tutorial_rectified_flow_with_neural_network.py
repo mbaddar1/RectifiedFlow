@@ -22,19 +22,23 @@ We generate $\pi_0$ and $\pi_1$ as two Gaussian mixture models with different mo
 We sample 10000 data points from $\pi_0$ and $\pi_1$, respectively,
 and store them in ```samples_0```, ```samples_1```.
 """
+import pickle
 import random
+import sys
+import time
 import torch
 import numpy as np
 import torch.nn as nn
 from sklearn.datasets import make_swiss_roll, make_circles, make_blobs
 from torch.distributions import Normal, Categorical
+from torch.distributions import Distribution
 from torch.distributions.multivariate_normal import MultivariateNormal
 from torch.distributions.mixture_same_family import MixtureSameFamily
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from functional_tt_fabrique import orthpoly, Extended_TensorTrain
 from geomloss import SamplesLoss
-
+from hyperopt import hp, fmin, tpe, Trials, STATUS_OK
 from utils.utils import get_target_samples, filter_tensor
 
 
@@ -145,9 +149,9 @@ class MLP(nn.Module):
 
 
 class RectifiedFlowTT:
-    def __init__(self, tt_rank, basis_degree, limits, data_dim):
+    def __init__(self, basis_degree, limits, data_dim, ranks):
         basis_degrees = [basis_degree] * (data_dim + 1)  # hotfix by charles that made the GMM work
-        ranks = [1] + [tt_rank] * data_dim + [1]
+        # ranks = [1] + [tt_rank] * data_dim + [1]
         domain = [list(limits) for _ in range(data_dim)] + [[0, 1]]
         print("Generating Orthopoly Func.(This might take a couple of secs)")
         op = orthpoly(basis_degrees, domain)
@@ -223,6 +227,55 @@ def train_rectified_flow_tt(rectified_flow_tt: RectifiedFlowTT, x0, x1, reg_coef
     return rectified_flow_tt
 
 
+def hopt_objective(args):
+    r1 = args['r1']
+    r2 = args['r2']
+    print(f"Creating a RecFlow TT object with r={(r1, r2)}")
+    ranks = [1] + [r1, r2] + [1]
+    basis_degree = 30
+    limits = (-20, 20)
+    model = RectifiedFlowTT(ranks=ranks, basis_degree=basis_degree, data_dim=data_dim, limits=limits)
+    print("training tt-recflow")
+    reg_coeff = 1e-20
+    n_itr = 40
+    tol = 5e-10
+    samples_loss_ = SamplesLoss(loss="sinkhorn")
+    x0 = args['init_model'].sample(torch.Size([args['N']]))
+    x1_train = get_target_samples(dataset_name=args['dataset_name'], n_samples=args['N'])
+    x1_test = get_target_samples(dataset_name=args['dataset_name'], n_samples=args['N'])
+    checkpoint_sinkhorn = samples_loss_(x1_train, x1_test)
+    print(f"Checkpoint sinkhorn between train and test : {checkpoint_sinkhorn}")
+    print(f"r={(r1, r2)}")
+    train_rectified_flow_tt(rectified_flow_tt=model, x0=x0, x1=x1_train, reg_coeff=reg_coeff,
+                            iterations=n_itr, tol=tol)
+    gen_sample = model.sample_ode(z0=initial_model.sample(torch.Size([n_samples])), N=1000)[-1]
+    gen_sample_filtered = filter_tensor(x=gen_sample)
+    gen_sinkhorn = samples_loss_(x1_test, gen_sample_filtered).item()
+    print(f"with r = {(r1, r2)}gen_sinkhorn value = {gen_sinkhorn}")
+    return {
+        'loss': gen_sinkhorn,
+        'status': STATUS_OK,
+        # -- store other results like this
+        'eval_time': time.time(),
+        # -- attachments are handled differently
+        'attachments':
+            {'time_module': pickle.dumps(time.time)}
+    }
+
+
+def tt_recflow_hopt(init_model: Distribution, target_dataset_name: str):
+    # https://github.com/hyperopt/hyperopt/issues/835
+    space = {'r1': hp.randint('r1', 5, 10),
+             'r2': hp.randint('r2', 5, 10),
+             'init_model': init_model,
+             'dataset_name': target_dataset_name,
+             'N': 10000}
+    trials = Trials()
+    best = fmin(fn=hopt_objective, space=space, algo=tpe.suggest, max_evals=20, trials=trials)
+    print(f"Best parameters = {best}")
+    print(f"Opt loss = {trials.best_trial['result']['loss']}")
+
+
 # Main
 if __name__ == '__main__':
     D = 10.
@@ -231,13 +284,12 @@ if __name__ == '__main__':
     DOT_SIZE = 4
     COMP = 3
     n_samples = 10000
+    data_dim = 2
     model_type = "tt"  # can be nn or tt
-    dataset_name = "swissroll"
+    target_dataset_name = "swissroll"
     initial_model = MultivariateNormal(loc=torch.zeros(2), covariance_matrix=torch.eye(2))
     samples_0 = initial_model.sample(torch.Size([n_samples]))
-
-    samples_1 = get_target_samples(dataset_name=dataset_name, n_samples=n_samples)
-
+    samples_1 = get_target_samples(dataset_name=target_dataset_name, n_samples=n_samples)
     plt.figure(figsize=(4, 4))
     plt.xlim(-M, M)
     plt.ylim(-M, M)
@@ -272,16 +324,9 @@ if __name__ == '__main__':
         plt.savefig("loss_curve_recflow_nn_1.png")
 
     elif model_type == "tt":
-        print("Creating a RecFlow TT object")
-        tt_rank = 6
-        basis_degree = 30
-        limits = (-20, 20)
-        recflow_model = RectifiedFlowTT(tt_rank=tt_rank, basis_degree=basis_degree, data_dim=2, limits=limits)
-        print("training tt-recflow")
-        reg_coeff = 1e-20
-        iterations = 40
-        tol = 5e-10
-        train_rectified_flow_tt(rectified_flow_tt=recflow_model, x0=samples_0, x1=samples_1)
+        tt_recflow_hopt(init_model=initial_model, target_dataset_name=target_dataset_name)
+        print("tt recflow hopt finished")
+        sys.exit(-1)
     else:
         raise ValueError(f"Unsupported recflow model type : {type(model_type)}")
 
@@ -290,8 +335,8 @@ if __name__ == '__main__':
     draw_plot(recflow_model, z0=initial_model.sample([2000]), z1=samples_1.detach().clone(), N=1000)
     print("Generating sinkhorn values")
     samples_loss = SamplesLoss(loss="sinkhorn")
-    samples_11 = get_target_samples(dataset_name=dataset_name, n_samples=n_samples)
-    samples_12 = get_target_samples(dataset_name=dataset_name, n_samples=n_samples)
+    samples_11 = get_target_samples(dataset_name=target_dataset_name, n_samples=n_samples)
+    samples_12 = get_target_samples(dataset_name=target_dataset_name, n_samples=n_samples)
     ref_sinkhorn = samples_loss(samples_11, samples_12)
     print(f"ref sinkhorn value = {ref_sinkhorn}")
 
@@ -308,3 +353,11 @@ if __name__ == '__main__':
     print(f"generated sinkhorn 2 = {gen_sinkhorn_2}")
     print(f"generated sinkhorn avg = {gen_sinkhorn_avg}")
     print("Finished")
+
+"""
+Results Log
+------------------
+Best parameters = {'r1': 8, 'r2': 6}
+Opt loss = 0.2500009078991041
+tt recflow hopt finished
+"""
