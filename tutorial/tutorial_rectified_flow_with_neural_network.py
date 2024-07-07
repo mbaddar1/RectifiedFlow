@@ -271,7 +271,7 @@ def tt_recflow_hopt(init_model: Distribution, target_dataset_name: str):
              'dataset_name': target_dataset_name,
              'N': 10000}
     trials = Trials()
-    best = fmin(fn=hopt_objective, space=space, algo=tpe.suggest, max_evals=20, trials=trials)
+    best = fmin(fn=hopt_objective, space=space, algo=tpe.suggest, max_evals=50, trials=trials)
     print(f"Best parameters = {best}")
     print(f"Opt loss = {trials.best_trial['result']['loss']}")
 
@@ -357,7 +357,8 @@ if __name__ == '__main__':
 """
 Results Log
 ------------------
-Best parameters = {'r1': 8, 'r2': 6}
-Opt loss = 0.2500009078991041
+100%|██████████| 50/50 [3:16:23<00:00, 235.68s/trial, best loss: 0.183088865746133]
+Best parameters = {'r1': 5, 'r2': 9}
+Opt loss = 0.183088865746133
 tt recflow hopt finished
 """
