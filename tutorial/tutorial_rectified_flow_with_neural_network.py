@@ -41,13 +41,12 @@ from geomloss import SamplesLoss
 from hyperopt import hp, fmin, tpe, Trials, STATUS_OK
 from utils.utils import get_target_samples, filter_tensor
 
-
 # Set seed
-#
-# SEED = 42
-# random.seed(SEED)
-# np.random.seed(SEED)
-# torch.manual_seed(SEED)
+
+SEED = 42
+random.seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
 
 
 @torch.no_grad()
@@ -99,6 +98,11 @@ def draw_plot(rectified_flow, z0, z1, N=None):
     plt.title('Transport Trajectory')
     plt.tight_layout()
     plt.savefig(f"trajectory_{suffix}.png")
+    samples_loss_ = SamplesLoss()
+    z1_gen = traj[-1]
+    z1_gen_filtered = filter_tensor(z1_gen)
+    sh = samples_loss_(z1_gen_filtered, z1)
+    print(f"Draw sh = {sh}")
 
 
 def get_train_tuple(z0=None, z1=None):
@@ -269,14 +273,14 @@ def tt_recflow_hopt(init_model: Distribution, target_dataset_name: str):
     # https://github.com/hyperopt/hyperopt/issues/835
     space = {'r1': hp.randint('r1', 1, 10),
              'r2': hp.randint('r2', 1, 10),
-             'd0': hp.randint('d0', 10, 30),
-             'd1': hp.randint('d1', 10, 30),
-             'd2': hp.randint('d2', 10, 30),
+             'd0': 30,
+             'd1': 30,
+             'd2': 30,
              'init_model': init_model,
              'dataset_name': target_dataset_name,
              'N': 10000}
     trials = Trials()
-    best = fmin(fn=hopt_objective, space=space, algo=tpe.suggest, max_evals=500, trials=trials)
+    best = fmin(fn=hopt_objective, space=space, algo=tpe.suggest, max_evals=200, trials=trials)
     print(f"Best parameters = {best}")
     print(f"Opt loss = {trials.best_trial['result']['loss']}")
 
@@ -339,9 +343,9 @@ if __name__ == '__main__':
                   "See console for results.exiting.\n"
                   "")
         else:
-            basis_degree = [50, 50, 50]
+            basis_degree = [30, 30, 30]
             limits = (-20, 20)
-            recflow_model = RectifiedFlowTT(ranks=[1, 5, 9, 1], basis_degrees=basis_degree, data_dim=2, limits=limits)
+            recflow_model = RectifiedFlowTT(ranks=[1, 8, 10, 1], basis_degrees=basis_degree, data_dim=2, limits=limits)
             print("training tt-recflow")
             reg_coeff = 1e-3
             iterations = 40
@@ -354,8 +358,13 @@ if __name__ == '__main__':
         raise ValueError(f"Unsupported recflow model type : {type(model_type)}")
 
     assert recflow_model is not None, "recflow_model is not initialized or trained"
+    print("Testing Part")
+    x0_test = initial_model.sample(torch.Size([2000]))
     print("Drawing generated samples vs actual and trajectories")
-    draw_plot(recflow_model, z0=initial_model.sample(torch.Size([2000])), z1=samples_1.detach().clone(), N=2000)
+
+    # FIXME , the code for drawing and sinkhorn must be the same , i.e. the sinkhorn must be
+    #   calculate for the same drawn data
+    draw_plot(recflow_model, z0=x0_test, z1=samples_1.detach().clone(), N=2000)
     print("Generating sinkhorn values")
     samples_loss = SamplesLoss(loss="sinkhorn")
     samples_11 = get_target_samples(dataset_name=target_dataset_name, n_samples=n_samples)
@@ -363,7 +372,7 @@ if __name__ == '__main__':
     ref_sinkhorn = samples_loss(samples_11, samples_12)
     print(f"ref sinkhorn value = {ref_sinkhorn}")
 
-    generated_sample = recflow_model.sample_ode(z0=initial_model.sample(torch.Size([n_samples])), N=2000)[-1]
+    generated_sample = recflow_model.sample_ode(z0=x0_test, N=2000)[-1]
     generated_sample_filtered = filter_tensor(x=generated_sample)
     gen_sinkhorn_1 = samples_loss(samples_11, generated_sample_filtered)
     gen_sinkhorn_2 = samples_loss(samples_12, generated_sample_filtered)
@@ -378,6 +387,13 @@ Results Log
 ------------------
 Best so far 
 ***
+basis_degree = [30, 30, 30]
+Best parameters = {'r1': 8, 'r2': 3}
+Opt loss = 0.11993751016478815
+tt recflow hyperopt is finished.
+See console for results.exiting.
+
+
 100%|██████████| 500/500 [10:10:10<00:00, 73.22s/trial, best loss: 0.16953713699778644]
 Best parameters = {'d0': 20, 'd1': 26, 'd2': 27, 'r1': 8, 'r2': 2}
 Opt loss = 0.16953713699778644
