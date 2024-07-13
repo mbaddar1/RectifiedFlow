@@ -50,19 +50,29 @@ torch.manual_seed(SEED)
 
 
 @torch.no_grad()
-def draw_plot(rectified_flow, z0, z1, N=None):
+def draw_plot(rectified_flow, z0, z1, N=None, **kwargs):
+    print(f"Drawing plot for model of class : {type(rectified_flow)}")
+
     assert isinstance(rectified_flow, (RectifiedFlowTT, RectifiedFlowNN))
+    fig_title_part = ""
     if isinstance(rectified_flow, RectifiedFlowTT):
         suffix = "tt"
+        fig_title_part += f"model=tt-recflow\nr={kwargs['r']},\nd={kwargs['d']}"
     elif isinstance(rectified_flow, RectifiedFlowNN):
-        suffix = "nn"
+        suffix = "model=nn-recflow"
     else:
         raise ValueError(f"Unsupported recflow model type : {type(rectified_flow)}")
 
-    print(f"Drawing plot for model of class : {type(rectified_flow)}")
     traj = rectified_flow.sample_ode(z0=z0, N=N)
+    # Get sinkhorn value
+    samples_loss_ = SamplesLoss()
+    z1_gen = traj[-1]
+    z1_gen_filtered = filter_tensor(z1_gen)
+    sinkhorn_value = samples_loss_(z1_gen_filtered, z1)
+    print(f"Sinkhorn value for the generated samples= {sinkhorn_value}")
+
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
-    fig.suptitle('Actual vs Generated Distribution')
+    fig.suptitle(f'Actual vs Generated Distribution : {fig_title_part} , \nsinkhorn = {sinkhorn_value}')
     x_lim = (-10, 10)
     y_lim = (-10, 10)
 
@@ -98,11 +108,6 @@ def draw_plot(rectified_flow, z0, z1, N=None):
     plt.title('Transport Trajectory')
     plt.tight_layout()
     plt.savefig(f"trajectory_{suffix}.png")
-    samples_loss_ = SamplesLoss()
-    z1_gen = traj[-1]
-    z1_gen_filtered = filter_tensor(z1_gen)
-    sh = samples_loss_(z1_gen_filtered, z1)
-    print(f"Draw sh = {sh}")
 
 
 def get_train_tuple(z0=None, z1=None):
@@ -295,7 +300,7 @@ if __name__ == '__main__':
     n_samples = 10000
     data_dim = 2
     model_type = "tt"  # can be nn or tt
-    do_hyperopt = True
+    do_hyperopt = False
     target_dataset_name = "swissroll"
     initial_model = MultivariateNormal(loc=torch.zeros(2), covariance_matrix=torch.eye(2))
     samples_0 = initial_model.sample(torch.Size([n_samples]))
@@ -316,6 +321,7 @@ if __name__ == '__main__':
     print("Training Recflow 1")
     x_0 = samples_0.detach().clone()[torch.randperm(len(samples_0))]
     x_1 = samples_1.detach().clone()[torch.randperm(len(samples_1))]
+    x0_test = initial_model.sample(torch.Size([2000]))
     x_pairs = torch.stack([x_0, x_1], dim=1)
 
     recflow_model = None
@@ -342,94 +348,81 @@ if __name__ == '__main__':
             print("tt recflow hyperopt is finished.\n"
                   "See console for results.exiting.\n"
                   "")
+
         else:
-            basis_degree = [30, 30, 30]
+            basis_degree = [50, 50, 50]
             limits = (-20, 20)
-            recflow_model = RectifiedFlowTT(ranks=[1, 8, 10, 1], basis_degrees=basis_degree, data_dim=2, limits=limits)
+            ranks = [1, 8, 3, 1]
+            recflow_model = RectifiedFlowTT(ranks=ranks, basis_degrees=basis_degree, data_dim=2, limits=limits)
             print("training tt-recflow")
             reg_coeff = 1e-3
             iterations = 40
             tol = 5e-10
             train_rectified_flow_tt(rectified_flow_tt=recflow_model, x0=samples_0, x1=samples_1, iterations=iterations,
                                     tol=tol, reg_coeff=reg_coeff)
+            # FIXME , the code for drawing and sinkhorn must be the same , i.e. the sinkhorn must be
+            #   calculate for the same drawn data
             print("tt recflow training finished , next step is to generate samples ")
-
+            draw_plot(recflow_model, z0=x0_test, z1=samples_1.detach().clone(), N=2000, r=ranks, d=basis_degree)
     else:
         raise ValueError(f"Unsupported recflow model type : {type(model_type)}")
 
     assert recflow_model is not None, "recflow_model is not initialized or trained"
-    print("Testing Part")
-    x0_test = initial_model.sample(torch.Size([2000]))
-    print("Drawing generated samples vs actual and trajectories")
 
-    # FIXME , the code for drawing and sinkhorn must be the same , i.e. the sinkhorn must be
-    #   calculate for the same drawn data
-    draw_plot(recflow_model, z0=x0_test, z1=samples_1.detach().clone(), N=2000)
-    print("Generating sinkhorn values")
-    samples_loss = SamplesLoss(loss="sinkhorn")
-    samples_11 = get_target_samples(dataset_name=target_dataset_name, n_samples=n_samples)
-    samples_12 = get_target_samples(dataset_name=target_dataset_name, n_samples=n_samples)
-    ref_sinkhorn = samples_loss(samples_11, samples_12)
-    print(f"ref sinkhorn value = {ref_sinkhorn}")
+    # print("Generating sinkhorn values")
+    # samples_loss = SamplesLoss(loss="sinkhorn")
+    # samples_11 = get_target_samples(dataset_name=target_dataset_name, n_samples=n_samples)
+    # samples_12 = get_target_samples(dataset_name=target_dataset_name, n_samples=n_samples)
+    # ref_sinkhorn = samples_loss(samples_11, samples_12)
+    # print(f"ref sinkhorn value = {ref_sinkhorn}")
 
-    generated_sample = recflow_model.sample_ode(z0=x0_test, N=2000)[-1]
-    generated_sample_filtered = filter_tensor(x=generated_sample)
-    gen_sinkhorn_1 = samples_loss(samples_11, generated_sample_filtered)
-    gen_sinkhorn_2 = samples_loss(samples_12, generated_sample_filtered)
-    gen_sinkhorn_avg = (gen_sinkhorn_1 + gen_sinkhorn_2) / 2.0
-    print(f"generated sinkhorn 1 = {gen_sinkhorn_1}")
-    print(f"generated sinkhorn 2 = {gen_sinkhorn_2}")
-    print(f"generated sinkhorn avg = {gen_sinkhorn_avg}")
+    # generated_sample = recflow_model.sample_ode(z0=x0_test, N=2000)[-1]
+    # generated_sample_filtered = filter_tensor(x=generated_sample)
+    # gen_sinkhorn_1 = samples_loss(samples_11, generated_sample_filtered)
+    # gen_sinkhorn_2 = samples_loss(samples_12, generated_sample_filtered)
+    # gen_sinkhorn_avg = (gen_sinkhorn_1 + gen_sinkhorn_2) / 2.0
+    # print(f"generated sinkhorn 1 = {gen_sinkhorn_1}")
+    # print(f"generated sinkhorn 2 = {gen_sinkhorn_2}")
+    # print(f"generated sinkhorn avg = {gen_sinkhorn_avg}")
     print("Finished")
 
 """
 Results Log
 ------------------
-Best so far 
-***
+We show Hyperopt and Normal Train run
+*********************************************************************
+
+Result Set # 1 : Normal tt-recflow train run with parameters based on a Hyperopt run (See Result Set 2) 
+____________________
+# Code Snippet and Params #
+
+# With fixed SEED
+SEED = 42
+random.seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
+.....
+basis_degree = [30, 30, 30]
+limits = (-8, 8)
+recflow_model = RectifiedFlowTT(ranks=[1, 8, 3, 1], basis_degrees=basis_degree, data_dim=2, limits=limits)
+print("training tt-recflow")
+reg_coeff = 1e-3
+iterations = 40
+tol = 5e-10
+train_rectified_flow_tt(rectified_flow_tt=recflow_model, x0=samples_0, x1=samples_1, iterations=iterations,
+    tol=tol, reg_coeff=reg_coeff)
+
+# Results #
+Run 1 : Sinkhorn value = 0.21108624166078424
+Run 2 : Sinkhorn value = 0.21108622431951704
+Run 3  : Sinkhorn value = 0.21108624043411978        
+*************************************************************************************
+Results Set 2 : Hyper opt run 
+_________________
 basis_degree = [30, 30, 30]
 Best parameters = {'r1': 8, 'r2': 3}
 Opt loss = 0.11993751016478815
 tt recflow hyperopt is finished.
 See console for results.exiting.
-
-
-100%|██████████| 500/500 [10:10:10<00:00, 73.22s/trial, best loss: 0.16953713699778644]
-Best parameters = {'d0': 20, 'd1': 26, 'd2': 27, 'r1': 8, 'r2': 2}
-Opt loss = 0.16953713699778644
-tt recflow hyperopt is finished.
-See console for results.exiting.
-____________________________________
-100%|██████████| 50/50 [3:16:23<00:00, 235.68s/trial, best loss: 0.183088865746133]
-Best parameters = {'r1': 5, 'r2': 9}
-Opt loss = 0.183088865746133
-tt recflow hopt finished
-------------------
-A Training with the following parameters 
-
-recflow_model = RectifiedFlowTT(ranks=[1, 5, 9, 1], basis_degree=basis_degree, data_dim=2, limits=limits)
-            print("training tt-recflow")
-            
-reg_coeff = 1e-3
-iterations = 20
-tol = 5e-5
-            
-generated sinkhorn 1 = 0.25840122119959386
-generated sinkhorn 2 = 0.23570882554678696
-generated sinkhorn avg = 0.2470550233731904
-Finished
--------------------
-Other runs : 
-***
-with r = (6, 13)gen_sinkhorn value = 0.45104844149763473
-100%|██████████| 50/50 [8:09:32<00:00, 587.46s/trial, best loss: 0.30536674621814947]
-Best parameters = {'r1': 6, 'r2': 5}
-Opt loss = 0.30536674621814947
-tt recflow hopt finished
-
-100%|██████████| 3/3 [08:22<00:00, 167.56s/trial, best loss: 0.2513715869687263]
-Best parameters = {'r1': 5, 'r2': 9}
-Opt loss = 0.2513715869687263
-tt recflow hopt finished
-
+***************************************************************************************
 """

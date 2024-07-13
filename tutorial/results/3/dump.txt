@@ -1,0 +1,10 @@
+Draw sh = 0.35971170356684035
+
+ basis_degree = [30, 30, 30]
+            limits = (-20, 20)
+            recflow_model = RectifiedFlowTT(ranks=[1, 5 , 9, 1], basis_degrees=basis_degree, data_dim=2, limits=limits)
+            print("training tt-recflow")
+            reg_coeff = 1e-3
+            iterations = 40
+            tol = 5e-10
+
