@@ -59,7 +59,8 @@ def draw_plot(rectified_flow, z0, z1, N=None, **kwargs):
         suffix = "tt"
         fig_title_part += f"model=tt-recflow\nr={kwargs['r']},\nd={kwargs['d']}"
     elif isinstance(rectified_flow, RectifiedFlowNN):
-        suffix = "model=nn-recflow"
+        suffix = "nn"
+        fig_title_part += f"model=nn-recflow"
     else:
         raise ValueError(f"Unsupported recflow model type : {type(rectified_flow)}")
 
@@ -67,7 +68,10 @@ def draw_plot(rectified_flow, z0, z1, N=None, **kwargs):
     # Get sinkhorn value
     samples_loss_ = SamplesLoss()
     z1_gen = traj[-1]
-    z1_gen_filtered = filter_tensor(z1_gen)
+    if isinstance(rectified_flow,RectifiedFlowTT):
+        z1_gen_filtered = filter_tensor(z1_gen)
+    else:
+        z1_gen_filtered = z1_gen
     sinkhorn_value = samples_loss_(z1_gen_filtered, z1)
     print(f"Sinkhorn value for the generated samples= {sinkhorn_value}")
 
@@ -108,6 +112,8 @@ def draw_plot(rectified_flow, z0, z1, N=None, **kwargs):
     plt.title('Transport Trajectory')
     plt.tight_layout()
     plt.savefig(f"trajectory_{suffix}.png")
+
+    plt.clf()
 
 
 def get_train_tuple(z0=None, z1=None):
@@ -299,7 +305,7 @@ if __name__ == '__main__':
     COMP = 3
     n_samples = 10000
     data_dim = 2
-    model_type = "tt"  # can be nn or tt
+    model_type = "nn"  # can be nn or tt
     do_hyperopt = False
     target_dataset_name = "swissroll"
     initial_model = MultivariateNormal(loc=torch.zeros(2), covariance_matrix=torch.eye(2))
@@ -338,6 +344,7 @@ if __name__ == '__main__':
 
             recflow_model, loss_curve = train_rectified_flow_nn(recflow_model, optimizer, x_pairs, batch_size,
                                                                 iterations)
+            draw_plot(recflow_model, z0=x0_test, z1=samples_1.detach().clone(), N=2000)
             plt.plot(np.linspace(0, iterations, iterations + 1), loss_curve[:(iterations + 1)])
             plt.title('Training Loss Curve')
             plt.savefig("loss_curve_recflow_nn_1.png")
@@ -350,7 +357,7 @@ if __name__ == '__main__':
                   "")
 
         else:
-            basis_degree = [50, 50, 50]
+            basis_degree = [32,32, 32]
             limits = (-20, 20)
             ranks = [1, 8, 3, 1]
             recflow_model = RectifiedFlowTT(ranks=ranks, basis_degrees=basis_degree, data_dim=2, limits=limits)
