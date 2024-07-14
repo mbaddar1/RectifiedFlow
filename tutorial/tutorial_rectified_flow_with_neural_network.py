@@ -36,17 +36,21 @@ from torch.distributions.multivariate_normal import MultivariateNormal
 from torch.distributions.mixture_same_family import MixtureSameFamily
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+from RectifiedFlow.tutorial.seed import set_global_seed
 from functional_tt_fabrique import orthpoly, Extended_TensorTrain
 from geomloss import SamplesLoss
 from hyperopt import hp, fmin, tpe, Trials, STATUS_OK
 from utils.utils import get_target_samples, filter_tensor
+from datetime import datetime
 
 # Set seed
-
 SEED = 42
-random.seed(SEED)
-np.random.seed(SEED)
-torch.manual_seed(SEED)
+set_global_seed(SEED)
+
+
+# random.seed(SEED)
+# np.random.seed(SEED)
+# torch.manual_seed(SEED)
 
 
 @torch.no_grad()
@@ -277,15 +281,19 @@ def hopt_objective(args):
     }
 
 
-def tt_recflow_hopt(init_model: Distribution, target_dataset_name: str):
+def tt_recflow_hopt(init_model: Distribution, hopt_max_evals: int, target_dataset_name: str):
     # https://github.com/hyperopt/hyperopt/issues/835
-    space = {'r': hp.randint('r', 1, 10),
-             'd': hp.randint('d', 5, 50),
+    space = {'r': hp.randint('r', 8, 8 + 1),
+             'd': hp.randint('d', 30, 30 + 1),
              'init_model': init_model,
              'dataset_name': target_dataset_name,
              'N': 10000}
     trials = Trials()
-    best = fmin(fn=hopt_objective, space=space, algo=tpe.suggest, max_evals=100, trials=trials)
+    best = fmin(fn=hopt_objective, space=space, algo=tpe.suggest, max_evals=hopt_max_evals, trials=trials)
+    time_stamp = datetime.now().isoformat()
+    print("writing trials")
+    with open(f"hopt_trials_{time_stamp}.hopt", "wb") as f:
+        pickle.dump(trials, f)
     print(f"Best parameters = {best}")
     print(f"Opt loss = {trials.best_trial['result']['loss']}")
 
@@ -300,8 +308,8 @@ if __name__ == '__main__':
     n_samples = 10000
     data_dim = 2
     model_type = "tt"  # can be nn or tt
-    do_hyperopt = False
-    hopt_max_evals = 500
+    do_hyperopt = True
+    hopt_max_evals = 5
     target_dataset_name = "swissroll"
     initial_model = MultivariateNormal(loc=torch.zeros(2), covariance_matrix=torch.eye(2))
     samples_0 = initial_model.sample(torch.Size([n_samples]))
@@ -346,11 +354,11 @@ if __name__ == '__main__':
 
     elif model_type == "tt":
         if do_hyperopt:
-            tt_recflow_hopt(init_model=initial_model, target_dataset_name=target_dataset_name)
+            tt_recflow_hopt(init_model=initial_model, target_dataset_name=target_dataset_name,
+                            hopt_max_evals=hopt_max_evals)
             print("tt recflow hyperopt is finished.\n"
-                  "See console for results.exiting.\n"
-                  "")
-
+                  "See console for results.exiting.\n""")
+            sys.exit(0)
         else:
             basis_degree = [30, 30, 30]
             limits = (-20, 20)
