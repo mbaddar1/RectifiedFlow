@@ -68,7 +68,7 @@ def draw_plot(rectified_flow, z0, z1, N=None, **kwargs):
     # Get sinkhorn value
     samples_loss_ = SamplesLoss()
     z1_gen = traj[-1]
-    if isinstance(rectified_flow,RectifiedFlowTT):
+    if isinstance(rectified_flow, RectifiedFlowTT):
         z1_gen_filtered = filter_tensor(z1_gen)
     else:
         z1_gen_filtered = z1_gen
@@ -243,15 +243,12 @@ def train_rectified_flow_tt(rectified_flow_tt: RectifiedFlowTT, x0, x1, reg_coef
 
 
 def hopt_objective(args):
-    r1 = args['r1']
-    r2 = args['r2']
-    d0 = args['d0']
-    d1 = args['d1']
-    d2 = args['d2']
-    print(f"Creating a RecFlow TT object with r={(r1, r2)}")
-    ranks = [1] + [r1, r2] + [1]
+    r = args['r']
+    d = args['d']
+    print(f"Creating a RecFlow TT object with r={(r, r)}")
+    ranks = [1] + [r, r] + [1]
     limits = (-20, 20)
-    model = RectifiedFlowTT(ranks=ranks, basis_degrees=[d0, d1, d2], data_dim=data_dim, limits=limits)
+    model = RectifiedFlowTT(ranks=ranks, basis_degrees=[d, d, d], data_dim=data_dim, limits=limits)
     print("training tt-recflow")
     reg_coeff = 1e-10
     n_itr = 20
@@ -262,13 +259,13 @@ def hopt_objective(args):
     x1_test = get_target_samples(dataset_name=args['dataset_name'], n_samples=args['N'])
     checkpoint_sinkhorn = samples_loss_(x1_train, x1_test)
     print(f"Checkpoint sinkhorn between train and test : {checkpoint_sinkhorn}")
-    print(f"r={(r1, r2)}")
+    print(f"r={(r, r)}")
     train_rectified_flow_tt(rectified_flow_tt=model, x0=x0, x1=x1_train, reg_coeff=reg_coeff,
                             iterations=n_itr, tol=tol)
     gen_sample = model.sample_ode(z0=args['init_model'].sample(torch.Size([n_samples])), N=2000)[-1]
     gen_sample_filtered = filter_tensor(x=gen_sample)
     gen_sinkhorn = samples_loss_(x1_test, gen_sample_filtered).item()
-    print(f"with r = {(r1, r2)}gen_sinkhorn value = {gen_sinkhorn}")
+    print(f"with r = {(r, r)}, d = {d}gen_sinkhorn value = {gen_sinkhorn}")
     return {
         'loss': gen_sinkhorn,
         'status': STATUS_OK,
@@ -282,16 +279,13 @@ def hopt_objective(args):
 
 def tt_recflow_hopt(init_model: Distribution, target_dataset_name: str):
     # https://github.com/hyperopt/hyperopt/issues/835
-    space = {'r1': hp.randint('r1', 1, 10),
-             'r2': hp.randint('r2', 1, 10),
-             'd0': 30,
-             'd1': 30,
-             'd2': 30,
+    space = {'r': hp.randint('r', 1, 10),
+             'd': hp.randint('d', 5, 50),
              'init_model': init_model,
              'dataset_name': target_dataset_name,
              'N': 10000}
     trials = Trials()
-    best = fmin(fn=hopt_objective, space=space, algo=tpe.suggest, max_evals=200, trials=trials)
+    best = fmin(fn=hopt_objective, space=space, algo=tpe.suggest, max_evals=100, trials=trials)
     print(f"Best parameters = {best}")
     print(f"Opt loss = {trials.best_trial['result']['loss']}")
 
@@ -305,8 +299,9 @@ if __name__ == '__main__':
     COMP = 3
     n_samples = 10000
     data_dim = 2
-    model_type = "nn"  # can be nn or tt
+    model_type = "tt"  # can be nn or tt
     do_hyperopt = False
+    hopt_max_evals = 500
     target_dataset_name = "swissroll"
     initial_model = MultivariateNormal(loc=torch.zeros(2), covariance_matrix=torch.eye(2))
     samples_0 = initial_model.sample(torch.Size([n_samples]))
@@ -357,9 +352,9 @@ if __name__ == '__main__':
                   "")
 
         else:
-            basis_degree = [32,32, 32]
+            basis_degree = [30, 30, 30]
             limits = (-20, 20)
-            ranks = [1, 8, 3, 1]
+            ranks = [1, 8, 8, 1]
             recflow_model = RectifiedFlowTT(ranks=ranks, basis_degrees=basis_degree, data_dim=2, limits=limits)
             print("training tt-recflow")
             reg_coeff = 1e-3
@@ -432,4 +427,11 @@ Opt loss = 0.11993751016478815
 tt recflow hyperopt is finished.
 See console for results.exiting.
 ***************************************************************************************
+
+Results Set 3 : Hyperopt run
+
+100%|██████████| 100/100 [3:14:53<00:00, 116.94s/trial, best loss: 0.1319644362387083]
+Best parameters = {'d': 30, 'r': 8}
+Opt loss = 0.1319644362387083
+tt recflow hyperopt is finished.
 """
