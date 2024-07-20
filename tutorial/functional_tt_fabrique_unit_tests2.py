@@ -5,7 +5,7 @@ import torch
 
 torch.set_default_dtype(torch.float64)
 
-from math import exp, sqrt, pi
+from math import pi
 
 from modelclass import Custom_Polynom_Arithmetic
 
@@ -53,9 +53,7 @@ def test_als():
 
     # get targets
     def poly(U):
-        """
-        FIXME Should we call it , logdensity function ??
-        evaluates the log density of the prior.
+        """evaluates the log density of the prior.
 
         Args:
             U (torch.tensor): Sample tensor of shape (N,D), where N is the number of samples and
@@ -70,12 +68,22 @@ def test_als():
         P0 = 0.1 * torch.eye(d)
         P0_inv = torch.linalg.inv(P0)
         P0_det = torch.linalg.det(P0)
-        res = +torch.einsum("ni,ij,nj->n", mean_diff, P0_inv, mean_diff) / 2 + sqrt(
-            ((P0_det) * (2 * pi) ** d))  # corresponds to phi in exp(-phi) (but with normalization constant)
+        # res = torch.einsum("ni,ij,nj->n", mean_diff, P0_inv, mean_diff) / 2 + sqrt(
+        #     ((P0_det) * (2 * pi) ** d)
+        # )
+        term1 = -0.5 * d * torch.log(2 * torch.tensor(pi))
+        term2 = - 0.5 * torch.log(P0_det)
+        term3 = - 0.5 * torch.einsum("ni,ij,nj->n", mean_diff, P0_inv, mean_diff)
+        res = term1 + term2 + term3
+        # corresponds to phi in exp(-phi) (but with normalization constant)
         return res.unsqueeze(1)
 
-    targets = poly(sample_points)
-    val_targets = poly(validation_points)
+    mio = torch.zeros(d)
+    Sigma = 0.1 * torch.eye(d)
+    mvn = torch.distributions.MultivariateNormal(loc=mio, covariance_matrix=Sigma)
+
+    targets = mvn.log_prob(sample_points).unsqueeze(1)  # poly(sample_points)
+    val_targets = mvn.log_prob(validation_points).unsqueeze(1)  # poly(validation_points)
 
     print("============= Fitting V0 to terminal value ==============")
     rule = None
@@ -113,7 +121,7 @@ def test_als():
     from matplotlib import pyplot as plt
 
     # visualize_pdf(ETT.marginal_density)
-    # plt.savefig("tt_density.pdf")
+    plt.savefig("tt_density.pdf")
 
 
 if __name__ == "__main__":

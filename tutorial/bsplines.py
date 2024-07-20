@@ -1,5 +1,6 @@
 """
 https://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.BSpline.html
+https://github.com/stat-ml/TTDE/blob/master/ttde/tt/basis.py
 """
 from scipy.interpolate import BSpline
 import matplotlib.pyplot as plt

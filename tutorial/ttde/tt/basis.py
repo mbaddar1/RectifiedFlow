@@ -4,8 +4,8 @@ from flax import struct
 
 from jax import numpy as jnp, vmap, lax
 
-from ttde.utils import tree_stack
-from ttde.utils.polynomial import poly_shift, poly_x, poly_definite_int, Polynomial#, poly_int
+from RectifiedFlow.tutorial.ttde.utils import tree_stack
+from RectifiedFlow.tutorial.ttde.utils.polynomial import Polynomial, poly_definite_int, poly_x, poly_shift
 
 
 def poly_const(const: float) -> jnp.ndarray:

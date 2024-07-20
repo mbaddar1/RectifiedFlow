@@ -15,12 +15,14 @@ def my_mvn_log_prob1(mio, Sigma, sample):
 if __name__ == '__main__':
     # test log_prob of mvn
     d = 4
+    N = 1
     Sigma = 0.1 * torch.eye(d)
     SigmaInv = torch.linalg.inv(Sigma)
     mio = torch.zeros(d)
-    sample1 = torch.tensor([0.1, -0.1, 0.8, 0.0])
+    # samples = torch.tensor([0.1, -0.1, 0.8, 0.0])
+    samples = torch.distributions.Uniform(low=0,high=1).sample(sample_shape=torch.Size([N,d]))
     mvn = torch.distributions.MultivariateNormal(loc=mio, covariance_matrix=Sigma)
-    log_prob_1 = mvn.log_prob(value=sample1)
+    log_prob_1 = mvn.log_prob(value=samples)
     print(log_prob_1)
-    log_prob_1 = my_mvn_log_prob1(mio=mio, Sigma=Sigma, sample=sample1)
+    log_prob_1 = my_mvn_log_prob1(mio=mio, Sigma=Sigma, sample=samples)
     print(log_prob_1)
