@@ -1,0 +1,19 @@
+# Set seed
+
+SEED = 42
+random.seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
+
+
+recflow_model = RectifiedFlowNN(model=MLP(input_dim, hidden_num=100), num_steps=100)
+            optimizer = torch.optim.Adam(recflow_model.model.parameters(), lr=5e-3)
+
+            recflow_model, loss_curve = train_rectified_flow_nn(recflow_model, optimizer, x_pairs, batch_size,
+                                                                iterations)
+            draw_plot(recflow_model, z0=x0_test, z1=samples_1.detach().clone(), N=2000)
+            plt.plot(np.linspace(0, iterations, iterations + 1), loss_curve[:(iterations + 1)])
+            plt.title('Training Loss Curve')
+            plt.savefig("loss_curve_recflow_nn_1.png")
+
+

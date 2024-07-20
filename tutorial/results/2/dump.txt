@@ -1,0 +1,15 @@
+for tt
+Model
+basis_degree = 5
+            limits = (-20, 20)
+            recflow_model = RectifiedFlowTT(ranks=[1, 5, 9, 1], basis_degree=basis_degree, data_dim=2, limits=limits)
+            print("training tt-recflow")
+            reg_coeff = 1e-10
+            iterations = 40
+            tol = 5e-10
+            train_rectified_flow_tt(rectified_flow_tt=recflow_model, x0=samples_0, x1=samples_1, iterations=iterations,
+                                    tol=tol, reg_coeff=reg_coeff)
+Results
+generated sinkhorn 1 = 0.44504073639514085
+generated sinkhorn 2 = 0.4394679629060778
+generated sinkhorn avg = 0.44225434965060932

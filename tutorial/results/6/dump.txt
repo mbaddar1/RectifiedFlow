@@ -1,0 +1,21 @@
+
+SEED = 42
+random.seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
+
+
+basis_degree = [10, 10, 10]
+            limits = (-20, 20)
+            ranks = [1, 8, 3, 1]
+            recflow_model = RectifiedFlowTT(ranks=ranks, basis_degrees=basis_degree, data_dim=2, limits=limits)
+            print("training tt-recflow")
+            reg_coeff = 1e-3
+            iterations = 40
+            tol = 5e-10
+            train_rectified_flow_tt(rectified_flow_tt=recflow_model, x0=samples_0, x1=samples_1, iterations=iterations,
+                                    tol=tol, reg_coeff=reg_coeff)
+            # FIXME , the code for drawing and sinkhorn must be the same , i.e. the sinkhorn must be
+            #   calculate for the same drawn data
+            print("tt recflow training finished , next step is to generate samples ")
+            draw_plot(recflow_model, z0=x0_test, z1=samples_1.detach().clone(), N=2000, r=ranks, d=basis_degree)

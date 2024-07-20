@@ -22,42 +22,65 @@ We generate $\pi_0$ and $\pi_1$ as two Gaussian mixture models with different mo
 We sample 10000 data points from $\pi_0$ and $\pi_1$, respectively,
 and store them in ```samples_0```, ```samples_1```.
 """
+import pickle
 import random
+import sys
+import time
 import torch
 import numpy as np
 import torch.nn as nn
 from sklearn.datasets import make_swiss_roll, make_circles, make_blobs
 from torch.distributions import Normal, Categorical
+from torch.distributions import Distribution
 from torch.distributions.multivariate_normal import MultivariateNormal
 from torch.distributions.mixture_same_family import MixtureSameFamily
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+from RectifiedFlow.tutorial.seed import set_global_seed
 from functional_tt_fabrique import orthpoly, Extended_TensorTrain
 from geomloss import SamplesLoss
-
-from utils.samples_generation import get_target_samples
+from hyperopt import hp, fmin, tpe, Trials, STATUS_OK
+from utils.utils import get_target_samples, filter_tensor
+from datetime import datetime
 
 # Set seed
 SEED = 42
-random.seed(SEED)
-np.random.seed(SEED)
-torch.manual_seed(SEED)
+set_global_seed(SEED)
+
+
+# random.seed(SEED)
+# np.random.seed(SEED)
+# torch.manual_seed(SEED)
 
 
 @torch.no_grad()
-def draw_plot(rectified_flow, z0, z1, N=None):
+def draw_plot(rectified_flow, z0, z1, N=None, **kwargs):
+    print(f"Drawing plot for model of class : {type(rectified_flow)}")
+
     assert isinstance(rectified_flow, (RectifiedFlowTT, RectifiedFlowNN))
+    fig_title_part = ""
     if isinstance(rectified_flow, RectifiedFlowTT):
         suffix = "tt"
+        fig_title_part += f"model=tt-recflow\nr={kwargs['r']},\nd={kwargs['d']}"
     elif isinstance(rectified_flow, RectifiedFlowNN):
         suffix = "nn"
+        fig_title_part += f"model=nn-recflow"
     else:
         raise ValueError(f"Unsupported recflow model type : {type(rectified_flow)}")
 
-    print(f"Drawing plot for model of class : {type(rectified_flow)}")
     traj = rectified_flow.sample_ode(z0=z0, N=N)
+    # Get sinkhorn value
+    samples_loss_ = SamplesLoss()
+    z1_gen = traj[-1]
+    if isinstance(rectified_flow, RectifiedFlowTT):
+        z1_gen_filtered = filter_tensor(z1_gen)
+    else:
+        z1_gen_filtered = z1_gen
+    sinkhorn_value = samples_loss_(z1_gen_filtered, z1)
+    print(f"Sinkhorn value for the generated samples= {sinkhorn_value}")
+
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
-    fig.suptitle('Actual vs Generated Distribution')
+    fig.suptitle(f'Actual vs Generated Distribution : {fig_title_part} , \nsinkhorn = {sinkhorn_value}')
     x_lim = (-10, 10)
     y_lim = (-10, 10)
 
@@ -93,6 +116,8 @@ def draw_plot(rectified_flow, z0, z1, N=None):
     plt.title('Transport Trajectory')
     plt.tight_layout()
     plt.savefig(f"trajectory_{suffix}.png")
+
+    plt.clf()
 
 
 def get_train_tuple(z0=None, z1=None):
@@ -143,9 +168,9 @@ class MLP(nn.Module):
 
 
 class RectifiedFlowTT:
-    def __init__(self, tt_rank, basis_degree, limits, data_dim):
-        basis_degrees = [basis_degree] * (data_dim + 1)  # hotfix by charles that made the GMM work
-        ranks = [1] + [tt_rank] * data_dim + [1]
+    def __init__(self, basis_degrees, limits, data_dim, ranks):
+        # basis_degrees = [basis_degree] * (data_dim + 1)  # hotfix by charles that made the GMM work
+        # ranks = [1] + [tt_rank] * data_dim + [1]
         domain = [list(limits) for _ in range(data_dim)] + [[0, 1]]
         print("Generating Orthopoly Func.(This might take a couple of secs)")
         op = orthpoly(basis_degrees, domain)
@@ -220,6 +245,59 @@ def train_rectified_flow_tt(rectified_flow_tt: RectifiedFlowTT, x0, x1, reg_coef
     print("recflow-tt training finished")
     return rectified_flow_tt
 
+
+def hopt_objective(args):
+    r = args['r']
+    d = args['d']
+    print(f"Creating a RecFlow TT object with r={(r, r)}")
+    ranks = [1] + [r, r] + [1]
+    limits = (-20, 20)
+    model = RectifiedFlowTT(ranks=ranks, basis_degrees=[d, d, d], data_dim=data_dim, limits=limits)
+    print("training tt-recflow")
+    reg_coeff = 1e-10
+    n_itr = 20
+    tol = 5e-10
+    samples_loss_ = SamplesLoss(loss="sinkhorn")
+    x0 = args['init_model'].sample(torch.Size([args['N']]))
+    x1_train = get_target_samples(dataset_name=args['dataset_name'], n_samples=args['N'])
+    x1_test = get_target_samples(dataset_name=args['dataset_name'], n_samples=args['N'])
+    checkpoint_sinkhorn = samples_loss_(x1_train, x1_test)
+    print(f"Checkpoint sinkhorn between train and test : {checkpoint_sinkhorn}")
+    print(f"r={(r, r)}")
+    train_rectified_flow_tt(rectified_flow_tt=model, x0=x0, x1=x1_train, reg_coeff=reg_coeff,
+                            iterations=n_itr, tol=tol)
+    gen_sample = model.sample_ode(z0=args['init_model'].sample(torch.Size([n_samples])), N=2000)[-1]
+    gen_sample_filtered = filter_tensor(x=gen_sample)
+    gen_sinkhorn = samples_loss_(x1_test, gen_sample_filtered).item()
+    print(f"with r = {(r, r)}, d = {d}gen_sinkhorn value = {gen_sinkhorn}")
+    return {
+        'loss': gen_sinkhorn,
+        'status': STATUS_OK,
+        # -- store other results like this
+        'eval_time': time.time(),
+        # -- attachments are handled differently
+        'attachments':
+            {'time_module': pickle.dumps(time.time)}
+    }
+
+
+def tt_recflow_hopt(init_model: Distribution, hopt_max_evals: int, target_dataset_name: str):
+    # https://github.com/hyperopt/hyperopt/issues/835
+    space = {'r': hp.randint('r', 8, 8 + 1),
+             'd': hp.randint('d', 30, 30 + 1),
+             'init_model': init_model,
+             'dataset_name': target_dataset_name,
+             'N': 10000}
+    trials = Trials()
+    best = fmin(fn=hopt_objective, space=space, algo=tpe.suggest, max_evals=hopt_max_evals, trials=trials)
+    time_stamp = datetime.now().isoformat()
+    print("writing trials")
+    with open(f"hopt_trials_{time_stamp}.hopt", "wb") as f:
+        pickle.dump(trials, f)
+    print(f"Best parameters = {best}")
+    print(f"Opt loss = {trials.best_trial['result']['loss']}")
+
+
 # Main
 if __name__ == '__main__':
     D = 10.
@@ -228,13 +306,14 @@ if __name__ == '__main__':
     DOT_SIZE = 4
     COMP = 3
     n_samples = 10000
-    model_type = "nn"  # can be nn or tt
-    dataset_name = "swissroll"
+    data_dim = 2
+    model_type = "tt"  # can be nn or tt
+    do_hyperopt = True
+    hopt_max_evals = 5
+    target_dataset_name = "swissroll"
     initial_model = MultivariateNormal(loc=torch.zeros(2), covariance_matrix=torch.eye(2))
     samples_0 = initial_model.sample(torch.Size([n_samples]))
-
-    samples_1 = get_target_samples(dataset_name=dataset_name, n_samples=n_samples)
-
+    samples_1 = get_target_samples(dataset_name=target_dataset_name, n_samples=n_samples)
     plt.figure(figsize=(4, 4))
     plt.xlim(-M, M)
     plt.ylim(-M, M)
@@ -251,40 +330,116 @@ if __name__ == '__main__':
     print("Training Recflow 1")
     x_0 = samples_0.detach().clone()[torch.randperm(len(samples_0))]
     x_1 = samples_1.detach().clone()[torch.randperm(len(samples_1))]
+    x0_test = initial_model.sample(torch.Size([2000]))
     x_pairs = torch.stack([x_0, x_1], dim=1)
 
+    recflow_model = None
     if model_type == "nn":
-        print("Training nn-recflow")
-        iterations = 10000
-        batch_size = 2048
-        input_dim = 2
-        rectified_flow_nn_1 = RectifiedFlowNN(model=MLP(input_dim, hidden_num=100), num_steps=100)
-        optimizer = torch.optim.Adam(rectified_flow_nn_1.model.parameters(), lr=5e-3)
+        if do_hyperopt:
+            raise NotImplementedError(f"hyperopt with nn is not implemented")
+        else:
+            print("Training nn-recflow")
+            iterations = 10000
+            batch_size = 2048
+            input_dim = 2
+            recflow_model = RectifiedFlowNN(model=MLP(input_dim, hidden_num=100), num_steps=100)
+            optimizer = torch.optim.Adam(recflow_model.model.parameters(), lr=5e-3)
 
-        rectified_flow_nn_1, loss_curve = train_rectified_flow_nn(rectified_flow_nn_1, optimizer, x_pairs, batch_size,
-                                                                  iterations)
-        plt.plot(np.linspace(0, iterations, iterations + 1), loss_curve[:(iterations + 1)])
-        plt.title('Training Loss Curve')
-        plt.savefig("loss_curve_recflow_nn_1.png")
-        print("Sampling")
-        draw_plot(rectified_flow_nn_1, z0=initial_model.sample([2000]), z1=samples_1.detach().clone(), N=1000)
-        # Calculate samples loss via sinkhorn
-        samples_loss = SamplesLoss(loss="sinkhorn")
+            recflow_model, loss_curve = train_rectified_flow_nn(recflow_model, optimizer, x_pairs, batch_size,
+                                                                iterations)
+            draw_plot(recflow_model, z0=x0_test, z1=samples_1.detach().clone(), N=2000)
+            plt.plot(np.linspace(0, iterations, iterations + 1), loss_curve[:(iterations + 1)])
+            plt.title('Training Loss Curve')
+            plt.savefig("loss_curve_recflow_nn_1.png")
 
     elif model_type == "tt":
-        print("Creating a RecFlow TT object")
-        tt_rank = 6
-        basis_degree = 30
-        limits = (-20, 20)
-        recflow_tt = RectifiedFlowTT(tt_rank=tt_rank, basis_degree=basis_degree, data_dim=2, limits=limits)
-        print("training tt-recflow")
-        reg_coeff = 1e-20
-        iterations = 40
-        tol = 5e-10
-        train_rectified_flow_tt(rectified_flow_tt=recflow_tt, x0=samples_0, x1=samples_1)
-        draw_plot(recflow_tt, z0=initial_model.sample([2000]), z1=samples_1.detach().clone(), N=1000)
-        # get X, and y
-
-
+        if do_hyperopt:
+            tt_recflow_hopt(init_model=initial_model, target_dataset_name=target_dataset_name,
+                            hopt_max_evals=hopt_max_evals)
+            print("tt recflow hyperopt is finished.\n"
+                  "See console for results.exiting.\n""")
+            sys.exit(0)
+        else:
+            basis_degree = [30, 30, 30]
+            limits = (-20, 20)
+            ranks = [1, 8, 8, 1]
+            recflow_model = RectifiedFlowTT(ranks=ranks, basis_degrees=basis_degree, data_dim=2, limits=limits)
+            print("training tt-recflow")
+            reg_coeff = 1e-3
+            iterations = 40
+            tol = 5e-10
+            train_rectified_flow_tt(rectified_flow_tt=recflow_model, x0=samples_0, x1=samples_1, iterations=iterations,
+                                    tol=tol, reg_coeff=reg_coeff)
+            # FIXME , the code for drawing and sinkhorn must be the same , i.e. the sinkhorn must be
+            #   calculate for the same drawn data
+            print("tt recflow training finished , next step is to generate samples ")
+            draw_plot(recflow_model, z0=x0_test, z1=samples_1.detach().clone(), N=2000, r=ranks, d=basis_degree)
     else:
-        raise ValueError(f"Unknown model_type : {model_type}")
+        raise ValueError(f"Unsupported recflow model type : {type(model_type)}")
+
+    assert recflow_model is not None, "recflow_model is not initialized or trained"
+
+    # print("Generating sinkhorn values")
+    # samples_loss = SamplesLoss(loss="sinkhorn")
+    # samples_11 = get_target_samples(dataset_name=target_dataset_name, n_samples=n_samples)
+    # samples_12 = get_target_samples(dataset_name=target_dataset_name, n_samples=n_samples)
+    # ref_sinkhorn = samples_loss(samples_11, samples_12)
+    # print(f"ref sinkhorn value = {ref_sinkhorn}")
+
+    # generated_sample = recflow_model.sample_ode(z0=x0_test, N=2000)[-1]
+    # generated_sample_filtered = filter_tensor(x=generated_sample)
+    # gen_sinkhorn_1 = samples_loss(samples_11, generated_sample_filtered)
+    # gen_sinkhorn_2 = samples_loss(samples_12, generated_sample_filtered)
+    # gen_sinkhorn_avg = (gen_sinkhorn_1 + gen_sinkhorn_2) / 2.0
+    # print(f"generated sinkhorn 1 = {gen_sinkhorn_1}")
+    # print(f"generated sinkhorn 2 = {gen_sinkhorn_2}")
+    # print(f"generated sinkhorn avg = {gen_sinkhorn_avg}")
+    print("Finished")
+
+"""
+Results Log
+------------------
+We show Hyperopt and Normal Train run
+*********************************************************************
+
+Result Set # 1 : Normal tt-recflow train run with parameters based on a Hyperopt run (See Result Set 2) 
+____________________
+# Code Snippet and Params #
+
+# With fixed SEED
+SEED = 42
+random.seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
+.....
+basis_degree = [30, 30, 30]
+limits = (-8, 8)
+recflow_model = RectifiedFlowTT(ranks=[1, 8, 3, 1], basis_degrees=basis_degree, data_dim=2, limits=limits)
+print("training tt-recflow")
+reg_coeff = 1e-3
+iterations = 40
+tol = 5e-10
+train_rectified_flow_tt(rectified_flow_tt=recflow_model, x0=samples_0, x1=samples_1, iterations=iterations,
+    tol=tol, reg_coeff=reg_coeff)
+
+# Results #
+Run 1 : Sinkhorn value = 0.21108624166078424
+Run 2 : Sinkhorn value = 0.21108622431951704
+Run 3  : Sinkhorn value = 0.21108624043411978        
+*************************************************************************************
+Results Set 2 : Hyper opt run 
+_________________
+basis_degree = [30, 30, 30]
+Best parameters = {'r1': 8, 'r2': 3}
+Opt loss = 0.11993751016478815
+tt recflow hyperopt is finished.
+See console for results.exiting.
+***************************************************************************************
+
+Results Set 3 : Hyperopt run
+
+100%|██████████| 100/100 [3:14:53<00:00, 116.94s/trial, best loss: 0.1319644362387083]
+Best parameters = {'d': 30, 'r': 8}
+Opt loss = 0.1319644362387083
+tt recflow hyperopt is finished.
+"""

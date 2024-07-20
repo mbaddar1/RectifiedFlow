@@ -1,0 +1,11 @@
+nn
+ref sinkhorn value = 0.008362472437661046
+generated sinkhorn 1 = 0.2973223884550603
+generated sinkhorn 2 = 0.28944483203428095
+generated sinkhorn avg = 0.29338361024467063
+---------
+tt
+ref sinkhorn value = 0.006122293237773954
+generated sinkhorn 1 = 0.31458854569032046
+generated sinkhorn 2 = 0.34318450323338584
+generated sinkhorn avg = 0.3288865244618532
