@@ -18,7 +18,85 @@ from colorama import Fore, Style
 import time
 
 
-def test_als():
+def test_als_log_prob():
+    # My understanding
+    print("==========Test 2 : TT ALS mvn log-prob, log_prob(x) = A.Phi(x)  x ~N(mio,Sigma) ================")
+    d = 10
+    degrees = [3] * d
+    ranks = [1] + [2] * (d - 1) + [1]
+
+    domain = [[-1.0, 1.0] for _ in range(d)]
+
+    op = orthpoly(degrees, domain)
+
+    ETT = Extended_TensorTrain(op, ranks)
+    # Check ALS FIT
+
+    # ALS parameters
+    reg_coeff = 1e-2
+    iterations = 40
+    tol = 5e-10
+
+    # define data range for fitting and data samples
+    sample_seed = 7771
+    sample_params = [16000, 6, sample_seed]
+    num_samples = max(
+        sample_params[0], sample_params[1] * d * (max(degrees) + 1) * max(ranks) ** 2
+    )  # number of samples proportional to TT parameters to prevent underfitting
+    print("number of samples:", num_samples)
+    num_val_samples = max(1000, d * (max(degrees) + 1) * max(ranks) ** 2)
+
+    torch.manual_seed(sample_seed)
+
+    # uniform sampling on the hypercube
+    strip = domain[0]
+    sample_points = (strip[1] - strip[0]) * torch.rand((num_samples, d)) + strip[0]
+    validation_points = (strip[1] - strip[0]) * torch.rand((num_val_samples, d)) + strip[0]
+
+    mio = torch.zeros(d)
+    Sigma = 0.1 * torch.eye(d)
+    mvn = torch.distributions.MultivariateNormal(loc=mio, covariance_matrix=Sigma)
+
+    targets = mvn.log_prob(sample_points).unsqueeze(1)  # poly(sample_points)
+    val_targets = mvn.log_prob(validation_points).unsqueeze(1)  # poly(validation_points)
+
+    print("============= Fitting V0 to terminal value ==============")
+    rule = None
+    # rule = tt.Dörfler_Adaptivity(delta = 1e-6,  maxranks = [32]*(n-1), dims = [feature_dim]*n, rankincr = 1)
+    ETT.fit(
+        sample_points,
+        targets,
+        iterations=iterations,
+        rule=rule,
+        tol=tol,
+        verboselevel=1,
+        reg_param=reg_coeff,
+    )
+    ETT.tt.set_core(d - 1)
+
+    print("ETT values: ", ETT(sample_points))
+    # print("Density values: ", ETT.evaluate_density(sample_points))
+    # print("True value of polynomial in 0: ", poly(torch.zeros((1, d))).item())
+    # print("TT approximation in 0: ", ETT((torch.zeros(1, d))).item())
+
+    train_error = (
+            torch.norm(ETT(sample_points) - targets) ** 2 / torch.norm(targets) ** 2
+    ).item()
+    val_error = (
+            torch.norm(ETT(validation_points) - val_targets) ** 2
+            / torch.norm(val_targets) ** 2
+    ).item()
+    print("relative error on training set: ", train_error)
+    print("relative error on validation set: ", val_error)
+    print("========================================================")
+
+
+def test_als_potential():
+    # My understanding
+    print("==========Test 1 : TT ALS Potential, U(x) = A.Phi(x)  ================")
+    # Predicting the Boltzmann Dist function
+    # https://web.stanford.edu/class/archive/cs/cs279/cs279.1202/lectures/lecture3-annot.pdf
+    # f(x) = e(-U(x)) where U(x) is the potential modeled by A.Phi(x)
     d = 10
     degrees = [3] * d
     ranks = [1] + [2] * (d - 1) + [1]
@@ -117,4 +195,7 @@ def test_als():
 
 
 if __name__ == "__main__":
-    test_als()
+    test_als_potential()
+    test_als_log_prob()
+
+
