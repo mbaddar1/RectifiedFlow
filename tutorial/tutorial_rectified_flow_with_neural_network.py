@@ -81,8 +81,8 @@ def draw_plot(rectified_flow, z0, z1, N=None, **kwargs):
 
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
     fig.suptitle(f'Actual vs Generated Distribution : {fig_title_part} , \nsinkhorn = {sinkhorn_value}')
-    x_lim = (-10, 10)
-    y_lim = (-10, 10)
+    x_lim = (-15, 15)
+    y_lim = (-15, 15)
 
     ax1.set_ylim(y_lim)
     ax1.set_xlim(x_lim)
@@ -309,8 +309,8 @@ if __name__ == '__main__':
     data_dim = 2
     model_type = "tt"  # can be nn or tt
     do_hyperopt = True
-    hopt_max_evals = 5
-    target_dataset_name = "swissroll"
+    hopt_max_evals = 100
+    target_dataset_name = "moons"
     initial_model = MultivariateNormal(loc=torch.zeros(2), covariance_matrix=torch.eye(2))
     samples_0 = initial_model.sample(torch.Size([n_samples]))
     samples_1 = get_target_samples(dataset_name=target_dataset_name, n_samples=n_samples)

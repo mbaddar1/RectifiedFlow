@@ -1,0 +1,12 @@
+SEED = 42
+set_global_seed(SEED)
+.....
+basis_degree = [30, 30, 30]
+limits = (-20, 20)
+ranks = [1, 8, 8, 1]
+recflow_model = RectifiedFlowTT(ranks=ranks, basis_degrees=basis_degree, data_dim=2, limits=limits)
+print("training tt-recflow")
+reg_coeff = 1e-3
+iterations = 40
+tol = 5e-10
+train_rectified_flow_tt(rectified_flow_tt=recflow_model, x0=samples_0, x1=samples_1, iterations=iterations,tol=tol, reg_coeff=reg_coeff)
