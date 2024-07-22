@@ -308,7 +308,7 @@ if __name__ == '__main__':
     n_samples = 10000
     data_dim = 2
     model_type = "tt"  # can be nn or tt
-    do_hyperopt = True
+    do_hyperopt = False
     hopt_max_evals = 100
     target_dataset_name = "moons"
     initial_model = MultivariateNormal(loc=torch.zeros(2), covariance_matrix=torch.eye(2))

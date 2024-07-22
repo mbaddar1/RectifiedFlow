@@ -1,5 +1,0 @@
-recflow_model = RectifiedFlowNN(model=MLP(input_dim, hidden_num=100), num_steps=100)
-            optimizer = torch.optim.Adam(recflow_model.model.parameters(), lr=5e-3)
-
-            recflow_model, loss_curve = train_rectified_flow_nn(recflow_model, optimizer, x_pairs, batch_size,
-                                                                iterations)
