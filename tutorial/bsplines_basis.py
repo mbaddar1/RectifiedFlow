@@ -39,39 +39,44 @@ def B(x, k, i, t):
 
 class BSplinesBasis:
 
-    def __init__(self, u_low, u_high, n_knots, degree):
+    def __init__(self, x_low, x_high, n_knots, degree):
+        # TODO make list of knots arrays based on data_dim
         self.degree = degree
         self.n_knots = n_knots
-        a1 = np.linspace(start=float(u_low), stop=u_high, num=n_knots + 1)
-        step = (u_high - u_low) / n_knots
-        a2 = np.linspace(start=float(u_high + step), stop=float(u_high + degree * step), num=degree + 1)
+        a1 = np.linspace(start=float(x_low), stop=x_high, num=n_knots)
+        step = (x_high - x_low) / n_knots
+        a2 = np.linspace(start=float(x_high + step), stop=float(x_high + degree * step), num=degree + 1)
         self.u_ = np.concatenate([a1, a2])
         self.memory = {}
         self.all_calls = 0
         self.num_memoized_calls = 0
 
-    def calculate_N(self, u, i):
-        u = np.round(u, 2)  # to make memoization more effective
+    def calculate_N(self, x, i):
+        x = np.round(x, 4)  # to make memoization more effective
         # https://pages.mtu.edu/~shene/COURSES/cs3621/NOTES/spline/B-spline/bspline-basis.html
         assert 0 <= i <= (self.n_knots - 1)
-        return self.__N(u, i, self.degree)
+        return self.__N(x, i, self.degree)
 
-    def __N(self, u, i, p):
+    def calculate_basis_vector(self, x):
+        basis_vectors = list(map(lambda x_d: [self.calculate_N(x_d, i) for i in range(self.n_knots)], x))
+        return basis_vectors
+
+    def __N(self, x, i, p):
         self.all_calls += 1
         # print(f"Calculating N({u},{i},{p})")
-        if (u, i, p) in self.memory.keys():
+        if (x, i, p) in self.memory.keys():
             # print(f"Memoized Value : N({u},{i},{p})")
             self.num_memoized_calls += 1
-            return self.memory[(u, i, p)]
+            return self.memory[(x, i, p)]
         if p == 0:
-            val = 1 if self.u_[i] <= u < self.u_[i + 1] else 0
+            val = 1 if self.u_[i] <= x < self.u_[i + 1] else 0
         else:
-            c1 = (u - self.u_[i]) / (self.u_[i + p] - self.u_[i])
-            N1 = self.__N(u, i, p - 1)
-            c2 = (self.u_[i + p + 1] - u) / (self.u_[i + p + 1] - self.u_[i + 1])
-            N2 = self.__N(u, i + 1, p - 1)
+            c1 = (x - self.u_[i]) / (self.u_[i + p] - self.u_[i])
+            N1 = self.__N(x, i, p - 1)
+            c2 = (self.u_[i + p + 1] - x) / (self.u_[i + p + 1] - self.u_[i + 1])
+            N2 = self.__N(x, i + 1, p - 1)
             val = c1 * N1 + c2 * N2
-        self.memory[(u, i, p)] = val
+        self.memory[(x, i, p)] = val
         return val
 
 
@@ -104,11 +109,11 @@ def bsplines_unit_test():
     nknots = 10
     u_low = 0.0
     u_high = 1.0
-    bsp2 = BSplinesBasis(u_low=u_low, u_high=u_high, n_knots=nknots, degree=degree)
+    bsp2 = BSplinesBasis(x_low=u_low, x_high=u_high, n_knots=nknots, degree=degree)
     for i in range(0, nknots):
         for x in np.arange(u_low, u_high, 0.01):
-            bval = bsp2.calculate_N(u=x, i=i)
-            bval2 = B(x=x, k=degree, i=i, t=bsp2.u_) # pass the augmented knots
+            bval = bsp2.calculate_N(x=x, i=i)
+            bval2 = B(x=x, k=degree, i=i, t=bsp2.u_)  # pass the augmented knots
             assert np.abs(bval - bval2) < 1e-6, f"N(x={x},i={i},p={degree}) are not equal : {bval}!={bval2}"
     print("Finished Unit Test")
 
