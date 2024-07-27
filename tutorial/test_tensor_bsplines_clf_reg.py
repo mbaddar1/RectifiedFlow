@@ -3,13 +3,51 @@ This script is to test MLPClassifier and MLPRegressor vs. TensorBSplines Classif
 ______
 Summary of Results
 ========================
+For Classification
+---
+I) moons dataset
+1) MLP
+MLP Classifier training time for dataset : moons= 111107 micro-secs
+MLP Classifier numel = 401
+MLP Classifier Accuracy for dataset moons= 0.8776041666666666
 
+2) TensorBSplines training time for dataset : moons = 724251 micro-secs
+TensorBSplinesClassifier numel 22
+TensorBSplines Classifier Accuracy for dataset moons =0.91796875
+***
+II) circles dataset
+1) MLP
+MLP Classifier training time for dataset : circles= 161734 micro-secs
+MLP Classifier numel = 401
+MLP Classifier Accuracy for dataset circles= 1.0
+
+2) TensorBSplines
+TensorBSplines training time for dataset : circles = 469228 micro-secs
+TensorBSplinesClassifier numel 22
+TensorBSplines Classifier Accuracy for dataset circles =0.8046875
+=======================
+For Regression
+------
+Diabetes dataset
+
+1) MLP
+numel for MLPRegressor = 11301
+RMSE for MLP regressor for the diabetes dataset = 51.14554004371418
+
+2) TensorBSplines
+numel for TensorBSplines-Regressor = 110
+RMSE for TensorBSplines regressor for the diabetes dataset = 56.209529969723356
 
 __________________________________________________
+
++++++++++++++++++++++++++++++++
+    *** Related Material ***
++++++++++++++++++++++++++++++++
 Basis Regression
 https://www.dbs.ifi.lmu.de/Lehre/MaschLernen/SS2016/Skript/BasisFunctions2016.pdf
 
-Sample Dataset
+Sample Datasets
+-------
 https://scikit-learn.org/stable/auto_examples/cluster/plot_linkage_comparison.html#sphx-glr-auto-examples-cluster-plot-linkage-comparison-py
 https://scikit-learn.org/stable/auto_examples/classification/plot_classifier_comparison.html#sphx-glr-auto-examples-classification-plot-classifier-comparison-py
 

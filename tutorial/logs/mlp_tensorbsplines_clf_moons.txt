@@ -1,0 +1,102 @@
+Classifier 
+Moons
+
+batch_size = 32
+    train_size = batch_size * 16
+    test_size = batch_size * 8
+    test_ratio = float(test_size) / train_size
+    dataset_name = "moons"
+    tol = 1e-4
+    train_iter = 5000
+    lr = 0.05
+    bspline_degree = 2
+    basis_dim = 11
+    ###
+
+
+/home/mbaddar/Documents/mbaddar/phd/genmodel/genmodel39_venv/bin/python /home/mbaddar/Documents/mbaddar/phd/genmodel/RectifiedFlow/tutorial/test_tensor_bsplines_clf_reg.py 
+##########################################################
+################# Test Classification ####################
+##########################################################
+Iteration 1, loss = 0.51010060
+Iteration 2, loss = 0.47838863
+Iteration 3, loss = 0.42359769
+Iteration 4, loss = 0.40972137
+Iteration 5, loss = 0.41159814
+Iteration 6, loss = 0.42634272
+Iteration 7, loss = 0.41775591
+Iteration 8, loss = 0.41883150
+Iteration 9, loss = 0.40850021
+Iteration 10, loss = 0.40131015
+Iteration 11, loss = 0.40869988
+Iteration 12, loss = 0.40305420
+Iteration 13, loss = 0.40565726
+Iteration 14, loss = 0.41280159
+Iteration 15, loss = 0.40821097
+Iteration 16, loss = 0.42315486
+Iteration 17, loss = 0.41178378
+Iteration 18, loss = 0.40167706
+Iteration 19, loss = 0.40259749
+Iteration 20, loss = 0.40878399
+Iteration 21, loss = 0.40934043
+Training loss did not improve more than tol=0.000100 for 10 consecutive epochs. Stopping.
+MLP Classifier training time for dataset : moons= 111107 micro-secs
+MLP Classifier numel = 401
+MLP Classifier Accuracy for dataset moons= 0.8776041666666666
+training:   0%|          | 0/5001 [00:00<?, ?it/s]iter = 0 , si = 0.6786163286705843, acc = 0.6875
+training:   2%|▏         | 101/5001 [00:05<01:11, 68.54it/s]iter = 100 , si = 0.21737807128765074, acc = 0.90625
+training:   4%|▍         | 201/5001 [00:06<00:50, 94.96it/s]iter = 200 , si = 0.16144313794057116, acc = 0.90625
+training:   6%|▌         | 301/5001 [00:07<00:49, 95.73it/s]iter = 300 , si = 0.14261512936010134, acc = 0.9375
+training:   8%|▊         | 401/5001 [00:08<00:48, 95.00it/s]iter = 400 , si = 0.13377800253943134, acc = 0.9375
+training:  10%|█         | 501/5001 [00:09<00:46, 95.83it/s]iter = 500 , si = 0.12882729453383263, acc = 0.9375
+training:  12%|█▏        | 601/5001 [00:11<00:46, 95.35it/s]iter = 600 , si = 0.12571427803240853, acc = 0.9375
+training:  14%|█▍        | 701/5001 [00:12<00:45, 95.39it/s]iter = 700 , si = 0.12359680372584374, acc = 0.9375
+training:  16%|█▌        | 801/5001 [00:13<00:43, 95.66it/s]iter = 800 , si = 0.12207484679850997, acc = 0.9375
+training:  18%|█▊        | 901/5001 [00:14<00:42, 95.61it/s]iter = 900 , si = 0.12093418868783254, acc = 0.9375
+training:  20%|██        | 1001/5001 [00:15<00:41, 95.65it/s]iter = 1000 , si = 0.12004872027130409, acc = 0.9375
+training:  22%|██▏       | 1101/5001 [00:16<00:40, 96.59it/s]iter = 1100 , si = 0.11933935467746426, acc = 0.9375
+training:  24%|██▍       | 1201/5001 [00:17<00:39, 96.57it/s]iter = 1200 , si = 0.11875449719313974, acc = 0.9375
+training:  26%|██▌       | 1301/5001 [00:18<00:38, 95.27it/s]iter = 1300 , si = 0.11825948557678397, acc = 0.9375
+training:  28%|██▊       | 1401/5001 [00:19<00:37, 96.58it/s]iter = 1400 , si = 0.1178304034315272, acc = 0.9375
+training:  30%|███       | 1501/5001 [00:20<00:37, 94.32it/s]iter = 1500 , si = 0.11745032853776116, acc = 0.9375
+training:  32%|███▏      | 1601/5001 [00:21<00:35, 95.18it/s]iter = 1600 , si = 0.11710700872910995, acc = 0.9375
+training:  34%|███▍      | 1701/5001 [00:22<00:34, 96.71it/s]iter = 1700 , si = 0.11679138801929098, acc = 0.9375
+training:  36%|███▌      | 1801/5001 [00:23<00:33, 95.41it/s]iter = 1800 , si = 0.11649664804684347, acc = 0.9375
+training:  38%|███▊      | 1901/5001 [00:24<00:32, 96.38it/s]iter = 1900 , si = 0.11621756947790515, acc = 0.9375
+training:  40%|████      | 2001/5001 [00:25<00:31, 96.28it/s]iter = 2000 , si = 0.1159500972632868, acc = 0.9375
+training:  42%|████▏     | 2101/5001 [00:26<00:30, 96.64it/s]iter = 2100 , si = 0.1156910389489447, acc = 0.9375
+training:  44%|████▍     | 2201/5001 [00:27<00:28, 96.91it/s]iter = 2200 , si = 0.11543785172851224, acc = 0.9375
+training:  46%|████▌     | 2301/5001 [00:28<00:27, 96.78it/s]iter = 2300 , si = 0.11518848983552374, acc = 0.9375
+training:  48%|████▊     | 2401/5001 [00:29<00:26, 96.85it/s]iter = 2400 , si = 0.1149412936721454, acc = 0.9375
+training:  50%|█████     | 2501/5001 [00:30<00:25, 96.22it/s]iter = 2500 , si = 0.11469490824608694, acc = 0.9375
+training:  52%|█████▏    | 2601/5001 [00:31<00:24, 96.44it/s]iter = 2600 , si = 0.11444822245949593, acc = 0.9375
+training:  54%|█████▍    | 2701/5001 [00:32<00:23, 96.63it/s]iter = 2700 , si = 0.11420032339799903, acc = 0.9375
+training:  56%|█████▌    | 2801/5001 [00:33<00:22, 96.59it/s]iter = 2800 , si = 0.11395046150672793, acc = 0.9375
+training:  58%|█████▊    | 2901/5001 [00:34<00:21, 96.04it/s]iter = 2900 , si = 0.11369802372134293, acc = 0.9375
+training:  60%|██████    | 3001/5001 [00:35<00:20, 96.35it/s]iter = 3000 , si = 0.11344251243832687, acc = 0.9375
+training:  62%|██████▏   | 3101/5001 [00:36<00:19, 96.45it/s]iter = 3100 , si = 0.11318352878234168, acc = 0.9375
+training:  64%|██████▍   | 3201/5001 [00:38<00:18, 96.58it/s]iter = 3200 , si = 0.11292075903775951, acc = 0.9375
+training:  66%|██████▌   | 3301/5001 [00:39<00:17, 96.72it/s]iter = 3300 , si = 0.11265396340765578, acc = 0.9375
+training:  68%|██████▊   | 3401/5001 [00:40<00:16, 95.86it/s]iter = 3400 , si = 0.11238296648028227, acc = 0.9375
+training:  70%|███████   | 3501/5001 [00:41<00:15, 95.98it/s]iter = 3500 , si = 0.1121076489428851, acc = 0.9375
+training:  72%|███████▏  | 3601/5001 [00:42<00:14, 96.07it/s]iter = 3600 , si = 0.11182794020116858, acc = 0.9375
+training:  74%|███████▍  | 3701/5001 [00:43<00:13, 96.17it/s]iter = 3700 , si = 0.11154381165089551, acc = 0.9375
+training:  76%|███████▌  | 3801/5001 [00:44<00:12, 96.15it/s]iter = 3800 , si = 0.11125527041404956, acc = 0.9375
+training:  78%|███████▊  | 3901/5001 [00:45<00:11, 95.39it/s]iter = 3900 , si = 0.1109623534019062, acc = 0.9375
+training:  80%|████████  | 4001/5001 [00:46<00:10, 96.18it/s]iter = 4000 , si = 0.1106651216060199, acc = 0.9375
+training:  82%|████████▏ | 4101/5001 [00:47<00:09, 96.26it/s]iter = 4100 , si = 0.11036365454919811, acc = 0.9375
+training:  84%|████████▍ | 4201/5001 [00:48<00:08, 96.28it/s]iter = 4200 , si = 0.11005804485473597, acc = 0.9375
+training:  86%|████████▌ | 4301/5001 [00:49<00:07, 96.22it/s]iter = 4300 , si = 0.10974839291544526, acc = 0.9375
+training:  88%|████████▊ | 4401/5001 [00:50<00:06, 95.81it/s]iter = 4400 , si = 0.10943480166549771, acc = 0.9375
+training:  90%|█████████ | 4501/5001 [00:51<00:05, 96.00it/s]iter = 4500 , si = 0.10911737147827996, acc = 0.9375
+training:  92%|█████████▏| 4601/5001 [00:52<00:04, 96.32it/s]iter = 4600 , si = 0.10879619523211247, acc = 0.9375
+training:  94%|█████████▍| 4701/5001 [00:53<00:03, 96.25it/s]iter = 4700 , si = 0.10847135360191595, acc = 0.9375
+training:  96%|█████████▌| 4801/5001 [00:54<00:02, 96.60it/s]iter = 4800 , si = 0.10814291064721802, acc = 0.9375
+training:  98%|█████████▊| 4901/5001 [00:55<00:01, 96.48it/s]iter = 4900 , si = 0.10781090977338768, acc = 0.9375
+training: 100%|██████████| 5001/5001 [00:56<00:00, 88.17it/s]
+iter = 5000 , si = 0.1074753701418619, acc = 0.9375
+TensorBSplines training time for dataset : moons = 724251 micro-secs
+TensorBSplinesClassifier numel 22
+TensorBSplines Classifier Accuracy for dataset moons =0.91796875
+
+Process finished with exit code 0
