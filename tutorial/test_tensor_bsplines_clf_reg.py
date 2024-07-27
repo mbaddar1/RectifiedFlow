@@ -7,36 +7,37 @@ For Classification
 ---
 I) moons dataset
 1) MLP
-MLP Classifier training time for dataset : moons= 111107 micro-secs
+MLP Classifier training time for dataset : moons= 104164 micro-secs
 MLP Classifier numel = 401
 MLP Classifier Accuracy for dataset moons= 0.8776041666666666
 
-2) TensorBSplines training time for dataset : moons = 724251 micro-secs
+2) TensorBSplines training time for dataset : moons = 635049 micro-secs
 TensorBSplinesClassifier numel 22
-TensorBSplines Classifier Accuracy for dataset moons =0.91796875
+TensorBSplines Classifier Accuracy for dataset moons =1.0
 ***
 II) circles dataset
 1) MLP
-MLP Classifier training time for dataset : circles= 161734 micro-secs
+MLP Classifier training time for dataset : circles= 166374 micro-secs
 MLP Classifier numel = 401
 MLP Classifier Accuracy for dataset circles= 1.0
 
-2) TensorBSplines
-TensorBSplines training time for dataset : circles = 469228 micro-secs
+2) TensorBSplines training time for dataset : circles = 301859 micro-secs
 TensorBSplinesClassifier numel 22
-TensorBSplines Classifier Accuracy for dataset circles =0.8046875
+TensorBSplines Classifier Accuracy for dataset circles =0.9921875
 =======================
 For Regression
 ------
 Diabetes dataset
 
 1) MLP
+MLP Regression training time = 92663 microseconds
 numel for MLPRegressor = 11301
 RMSE for MLP regressor for the diabetes dataset = 51.14554004371418
 
 2) TensorBSplines
 numel for TensorBSplines-Regressor = 110
-RMSE for TensorBSplines regressor for the diabetes dataset = 56.209529969723356
+TensorBSplines Regressor training time = 993522 microseconds
+RMSE for TensorBSplines regressor for the diabetes dataset = 54.926424384406886
 
 __________________________________________________
 
@@ -58,6 +59,8 @@ https://scikit-learn.org/stable/auto_examples/classification/plot_classifier_com
 Loss Function in PyTorch Models
 https://machinelearningmastery.com/loss-functions-in-pytorch-models/
 """
+import sys
+
 import torch.nn
 from sklearn.datasets import make_circles, make_moons, load_diabetes
 from sklearn.metrics import accuracy_score, mean_squared_error
@@ -105,37 +108,56 @@ def get_data(dataset_name, n_samples):
 
 
 class TensorBSplinesModel(torch.nn.Module):
-    def __init__(self, data_dim, basis_dim, x_low, x_high, degree, *args, **kwargs):
+    def __init__(self, data_dim, basis_dim, x_range, degree, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        super().__init__(*args, **kwargs)
-        super().__init__(*args, **kwargs)
+
         self.A = torch.nn.Parameter(
             torch.distributions.Uniform(low=-0.1, high=0.1).sample(sample_shape=torch.Size([data_dim, basis_dim])))
-        self.bsp = BSplinesBasis(x_low=x_low, x_high=x_high, n_knots=basis_dim, degree=degree)
+        assert data_dim == len(x_range)
+        self.bsp = []
+        for d in range(data_dim):
+            self.bsp.append(BSplinesBasis(x_low=x_range[d][0], x_high=x_range[d][1], n_knots=basis_dim, degree=degree))
 
     def forward(self, x):
         assert isinstance(x, torch.Tensor)
-        x_list = x.tolist()
-        basis_list = list(map(lambda e: self.bsp.calculate_basis_vector(e), x_list))
-        basis_tensor = torch.tensor(basis_list)
+        D = x.shape[1]
+        x_list = x.T.tolist()
+        basis_list = list(map(lambda d: self.bsp[d].calculate_basis_vector(x_list[d]), list(range(D))))
+        basis_tensor = torch.tensor(basis_list).permute(1, 0, 2)
         y = torch.einsum('bij,ij->b', basis_tensor, self.A)
         return y
 
     def numel(self):
         return torch.numel(self.A)
 
+    @staticmethod
+    def get_data_range(x: torch.Tensor):
+        """
+        x : 2D tensor of shape N X D
+        """
+        N = x.shape[0]
+        D = x.shape[1]
+        decimals = 1
+        x_max, x_min = (torch.round(torch.max(x, dim=0).values, decimals=decimals),
+                        torch.round_(torch.min(x, dim=0).values, decimals=decimals))
+        step = 1.0 / 10 ** decimals
+        x_max = x_max + step
+        x_min = x_min - step
+        x_range = torch.stack(tensors=[x_min, x_max], dim=0).T.tolist()
+        return x_range
+
 
 class TensorBSplinesRegressor(TensorBSplinesModel):
-    def __init__(self, data_dim, basis_dim, x_low, x_high, degree, *args, **kwargs):
-        super().__init__(data_dim, basis_dim, x_low, x_high, degree, *args, **kwargs)
+    def __init__(self, data_dim, basis_dim, x_range, degree, *args, **kwargs):
+        super().__init__(data_dim, basis_dim, x_range, degree, *args, **kwargs)
 
     def forward(self, x):
         return super().forward(x)
 
 
 class TensorBSplinesClassifier(TensorBSplinesModel):
-    def __init__(self, data_dim, basis_dim, x_low, x_high, degree, *args, **kwargs):
-        super().__init__(data_dim, basis_dim, x_low, x_high, degree, *args, **kwargs)
+    def __init__(self, data_dim, basis_dim, x_range, degree, *args, **kwargs):
+        super().__init__(data_dim, basis_dim, x_range, degree, *args, **kwargs)
 
     def forward(self, x: torch.Tensor):
         out = super().forward(x)
@@ -152,7 +174,7 @@ def test_classifier():
     train_size = batch_size * 16
     test_size = batch_size * 8
     test_ratio = float(test_size) / train_size
-    dataset_name = "circles"
+    dataset_name = "moons"
     tol = 1e-4
     train_iter = 5000
     lr = 0.05
@@ -173,7 +195,8 @@ def test_classifier():
     start_time = datetime.now()
     mlp.fit(X_train, y_train)
     end_time = datetime.now()
-    print(f"MLP Classifier training time for dataset : {dataset_name}= {(end_time - start_time).microseconds} micro-secs")
+    print(
+        f"MLP Classifier training time for dataset : {dataset_name}= {(end_time - start_time).microseconds} micro-secs")
     mlp_numel = get_mlp_numel(mlp)
     print(f"MLP Classifier numel = {mlp_numel}")
     y_hat = mlp.predict(X_test)
@@ -189,7 +212,8 @@ def test_classifier():
     plt.savefig(f"clf_mlp_actual_predicted_{dataset_name}.png")
 
     # Full-Tensor-BSplines Classifier
-    tns_clf = TensorBSplinesClassifier(data_dim=D, basis_dim=basis_dim, x_low=-1, x_high=1, degree=bspline_degree)
+    x_range = TensorBSplinesModel.get_data_range(x=torch.tensor(X_train))
+    tns_clf = TensorBSplinesClassifier(data_dim=D, basis_dim=basis_dim, x_range=x_range, degree=bspline_degree)
 
     optimizer = torch.optim.Adam(tns_clf.parameters(), lr=lr)
     loss_fn = torch.nn.BCELoss()
@@ -229,7 +253,8 @@ def test_classifier():
         optimizer.step()
 
     end_time = datetime.now()
-    print(f"TensorBSplines training time for dataset : {dataset_name} = {(end_time - start_time).microseconds} micro-secs")
+    print(
+        f"TensorBSplines training time for dataset : {dataset_name} = {(end_time - start_time).microseconds} micro-secs")
     plt.clf()
     plt.plot(loss_curve_itr_index, loss_curve_values)
     plt.title(f"Loss Curve for TensorBsplines Classifier for dataset : {dataset_name}")
@@ -269,24 +294,29 @@ def test_regression():
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=SEED)
     N_train = X_train.shape[0]
     print("########## Training MLP Regressor############")
+    start_time = datetime.now()
     mlp_reg.fit(X_train, y_train)
-    nel = get_mlp_numel(mlp_reg)
-    print(f"numel for MLPRegressor = {nel}")
+    end_time = datetime.now()
     y_hat = mlp_reg.predict(X_test)
     rmse_ = np.sqrt(mean_squared_error(y_true=y_test, y_pred=y_hat))
+
+    print(f"MLP Regression training time = {(end_time - start_time).microseconds} microseconds")
+    nel = get_mlp_numel(mlp_reg)
+    print(f"numel for MLPRegressor = {nel}")
     print(f"RMSE for MLP regressor for the diabetes dataset = {rmse_}")
 
     # TensorBSplines
     print("############## Training TensorBSplines Regressor ################")
-    tns_reg = TensorBSplinesRegressor(data_dim=D, basis_dim=basis_dim, x_low=-0.2, x_high=0.2, degree=b_splines_degree)
-    nel = tns_reg.numel()
-    print(f"numel for TensorBSplines-Regressor = {nel}")
+    x_range = TensorBSplinesModel.get_data_range(torch.tensor(X))  # get range based on complete dataset: train and test
+    tns_reg = TensorBSplinesRegressor(data_dim=D, basis_dim=basis_dim, x_range=x_range, degree=b_splines_degree)
+
     loss_fn = torch.nn.MSELoss()
     batch_size = 64
     indices = list(np.arange(0, N_train))
     optimizer = torch.optim.Adam(tns_reg.parameters(), lr=0.05)
     si = None
     alpha = 0.1
+    start_time = datetime.now()
     for i in tqdm(range(10000), desc="TensorBSplines Regression Training"):
         optimizer.zero_grad()
         batch_idx = random.sample(population=indices, k=batch_size)
@@ -302,6 +332,10 @@ def test_regression():
             print(f"i = {i},si = {si}")
         loss.backward()
         optimizer.step()
+    end_time = end_time.now()
+    nel = tns_reg.numel()
+    print(f"numel for TensorBSplines-Regressor = {nel}")
+    print(f"TensorBSplines Regressor training time = {(end_time - start_time).microseconds} microseconds")
     y_hat = tns_reg(torch.tensor(X_test))
     rmse_ = np.sqrt(mean_squared_error(y_true=y_test, y_pred=y_hat.detach().numpy()))
     print(f"RMSE for TensorBSplines regressor for the diabetes dataset = {rmse_}")

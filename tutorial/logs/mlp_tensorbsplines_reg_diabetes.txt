@@ -1,6 +1,7 @@
-Regression
+reg
+diabetes
 
-/home/mbaddar/Documents/mbaddar/phd/genmodel/genmodel39_venv/bin/python /home/mbaddar/Documents/mbaddar/phd/genmodel/RectifiedFlow/tutorial/test_tensor_bsplines_clf_reg.py 
+/home/mbaddar/Documents/mbaddar/phd/genmodel/genmodel39_venv/bin/python /home/mbaddar/Documents/mbaddar/phd/genmodel/RectifiedFlow/tutorial/test_tensor_bsplines_clf_reg.py
 data range = (-0.13776722569000302, 0.19878798965729408)
 ########## Training MLP Regressor############
 Iteration 1, loss = 14880.36420344
@@ -3636,108 +3637,107 @@ numel for MLPRegressor = 11301
 RMSE for MLP regressor for the diabetes dataset = 51.14554004371418
 ############## Training TensorBSplines Regressor ################
 numel for TensorBSplines-Regressor = 110
-TensorBSplines Regression Training:   0%|          | 0/10000 [00:00<?, ?it/s]i = 0,si = 28100.61011785631
-TensorBSplines Regression Training:   1%|          | 100/10000 [00:14<16:04, 10.26it/s]i = 100,si = 18834.719155702973
-TensorBSplines Regression Training:   2%|▏         | 200/10000 [00:24<16:10, 10.10it/s]i = 200,si = 11452.259001787212
-TensorBSplines Regression Training:   3%|▎         | 300/10000 [00:34<15:48, 10.23it/s]i = 300,si = 7515.641477180579
-TensorBSplines Regression Training:   4%|▍         | 400/10000 [00:43<15:33, 10.29it/s]i = 400,si = 6078.20092954471
-TensorBSplines Regression Training:   5%|▌         | 500/10000 [00:53<15:22, 10.29it/s]i = 500,si = 5135.620281663927
-TensorBSplines Regression Training:   6%|▌         | 600/10000 [01:03<15:12, 10.30it/s]i = 600,si = 4516.198818697948
-TensorBSplines Regression Training:   7%|▋         | 700/10000 [01:12<15:07, 10.25it/s]i = 700,si = 4219.34377151362
-TensorBSplines Regression Training:   8%|▊         | 800/10000 [01:22<14:50, 10.33it/s]i = 800,si = 3911.989963265114
-TensorBSplines Regression Training:   9%|▉         | 900/10000 [01:32<14:41, 10.33it/s]i = 900,si = 3634.9551594274344
-TensorBSplines Regression Training:  10%|█         | 1000/10000 [01:41<14:33, 10.31it/s]i = 1000,si = 3508.0443330180497
-TensorBSplines Regression Training:  11%|█         | 1101/10000 [01:51<14:59,  9.90it/s]i = 1100,si = 3199.626920491266
-TensorBSplines Regression Training:  12%|█▏        | 1201/10000 [02:01<14:12, 10.32it/s]i = 1200,si = 3286.1950369513215
-TensorBSplines Regression Training:  13%|█▎        | 1301/10000 [02:11<13:56, 10.39it/s]i = 1300,si = 3176.2427504668112
-TensorBSplines Regression Training:  14%|█▍        | 1401/10000 [02:20<13:48, 10.38it/s]i = 1400,si = 2941.666480454616
-TensorBSplines Regression Training:  15%|█▌        | 1501/10000 [02:30<13:39, 10.37it/s]i = 1500,si = 2954.926679588344
-TensorBSplines Regression Training:  16%|█▌        | 1601/10000 [02:40<13:29, 10.38it/s]i = 1600,si = 2947.554504065682
-TensorBSplines Regression Training:  17%|█▋        | 1701/10000 [02:49<13:19, 10.38it/s]i = 1700,si = 2927.938130239275
-TensorBSplines Regression Training:  18%|█▊        | 1801/10000 [02:59<13:11, 10.36it/s]i = 1800,si = 2829.5649069059505
-TensorBSplines Regression Training:  19%|█▉        | 1901/10000 [03:09<13:02, 10.35it/s]i = 1900,si = 2714.7934622386642
-TensorBSplines Regression Training:  20%|██        | 2001/10000 [03:18<12:53, 10.34it/s]i = 2000,si = 2659.4623687145104
-TensorBSplines Regression Training:  21%|██        | 2101/10000 [03:28<12:42, 10.36it/s]i = 2100,si = 2775.542809213382
-TensorBSplines Regression Training:  22%|██▏       | 2201/10000 [03:38<12:33, 10.35it/s]i = 2200,si = 2611.659676326897
-TensorBSplines Regression Training:  23%|██▎       | 2301/10000 [03:47<12:24, 10.34it/s]i = 2300,si = 2678.638108994225
-TensorBSplines Regression Training:  24%|██▍       | 2401/10000 [03:57<12:15, 10.33it/s]i = 2400,si = 2787.290653645781
-TensorBSplines Regression Training:  25%|██▌       | 2501/10000 [04:07<12:04, 10.35it/s]i = 2500,si = 2636.261076956074
-TensorBSplines Regression Training:  26%|██▌       | 2601/10000 [04:16<11:57, 10.32it/s]i = 2600,si = 2596.3085345483464
-TensorBSplines Regression Training:  27%|██▋       | 2701/10000 [04:26<11:45, 10.34it/s]i = 2700,si = 2700.754836818839
-TensorBSplines Regression Training:  28%|██▊       | 2800/10000 [04:36<11:55, 10.06it/s]i = 2800,si = 2612.4696462197307
-TensorBSplines Regression Training:  29%|██▉       | 2900/10000 [04:46<11:46, 10.05it/s]i = 2900,si = 2754.7998033319304
-TensorBSplines Regression Training:  30%|███       | 3000/10000 [04:56<11:25, 10.21it/s]i = 3000,si = 2409.5749906552455
-TensorBSplines Regression Training:  31%|███       | 3100/10000 [05:05<11:16, 10.21it/s]i = 3100,si = 2496.098293987415
-TensorBSplines Regression Training:  32%|███▏      | 3200/10000 [05:15<11:05, 10.22it/s]i = 3200,si = 2516.373219616267
-TensorBSplines Regression Training:  33%|███▎      | 3300/10000 [05:25<10:56, 10.20it/s]i = 3300,si = 2564.976438143209
-TensorBSplines Regression Training:  34%|███▍      | 3400/10000 [05:35<10:45, 10.22it/s]i = 3400,si = 2571.290303648714
-TensorBSplines Regression Training:  35%|███▌      | 3500/10000 [05:45<10:35, 10.23it/s]i = 3500,si = 2319.553318148708
-TensorBSplines Regression Training:  36%|███▌      | 3600/10000 [05:54<10:29, 10.17it/s]i = 3600,si = 2581.1893282423216
-TensorBSplines Regression Training:  37%|███▋      | 3700/10000 [06:04<10:12, 10.28it/s]i = 3700,si = 2311.153102322657
-TensorBSplines Regression Training:  38%|███▊      | 3800/10000 [06:14<10:11, 10.13it/s]i = 3800,si = 2517.16514759175
-TensorBSplines Regression Training:  39%|███▉      | 3900/10000 [06:24<09:57, 10.21it/s]i = 3900,si = 2455.944658370071
-TensorBSplines Regression Training:  40%|████      | 4000/10000 [06:34<09:47, 10.21it/s]i = 4000,si = 2571.9979508595143
-TensorBSplines Regression Training:  41%|████      | 4100/10000 [06:43<09:36, 10.23it/s]i = 4100,si = 2536.8869687967153
-TensorBSplines Regression Training:  42%|████▏     | 4201/10000 [06:53<09:29, 10.18it/s]i = 4200,si = 2623.703429608464
-TensorBSplines Regression Training:  43%|████▎     | 4301/10000 [07:03<09:21, 10.14it/s]i = 4300,si = 2513.447702038621
-TensorBSplines Regression Training:  44%|████▍     | 4401/10000 [07:13<09:08, 10.20it/s]i = 4400,si = 2519.5813834794985
-TensorBSplines Regression Training:  45%|████▌     | 4501/10000 [07:23<09:02, 10.14it/s]i = 4500,si = 2535.5551887080237
-TensorBSplines Regression Training:  46%|████▌     | 4601/10000 [07:33<08:49, 10.20it/s]i = 4600,si = 2378.815924047902
-TensorBSplines Regression Training:  47%|████▋     | 4701/10000 [07:43<08:50,  9.99it/s]i = 4700,si = 2523.501295205019
-TensorBSplines Regression Training:  48%|████▊     | 4801/10000 [07:52<08:32, 10.15it/s]i = 4800,si = 2355.9714679509175
-TensorBSplines Regression Training:  49%|████▉     | 4901/10000 [08:02<08:20, 10.19it/s]i = 4900,si = 2526.4871092951926
-TensorBSplines Regression Training:  50%|█████     | 5001/10000 [08:12<08:10, 10.19it/s]i = 5000,si = 2580.931575230042
-TensorBSplines Regression Training:  51%|█████     | 5101/10000 [08:22<08:00, 10.19it/s]i = 5100,si = 2437.996195025134
-TensorBSplines Regression Training:  52%|█████▏    | 5201/10000 [08:32<07:50, 10.20it/s]i = 5200,si = 2330.236515436002
-TensorBSplines Regression Training:  53%|█████▎    | 5301/10000 [08:42<07:44, 10.12it/s]i = 5300,si = 2470.419719816192
-TensorBSplines Regression Training:  54%|█████▍    | 5401/10000 [08:51<07:34, 10.12it/s]i = 5400,si = 2375.427470698388
-TensorBSplines Regression Training:  55%|█████▌    | 5500/10000 [09:01<07:23, 10.14it/s]i = 5500,si = 2402.6349412088875
-TensorBSplines Regression Training:  56%|█████▌    | 5600/10000 [09:11<07:57,  9.21it/s]i = 5600,si = 2442.4304119351045
-TensorBSplines Regression Training:  57%|█████▋    | 5701/10000 [09:21<07:02, 10.16it/s]i = 5700,si = 2434.8543955468176
-TensorBSplines Regression Training:  58%|█████▊    | 5801/10000 [09:31<06:55, 10.11it/s]i = 5800,si = 2385.0234582908724
-TensorBSplines Regression Training:  59%|█████▉    | 5900/10000 [09:41<06:43, 10.15it/s]i = 5900,si = 2344.857952510633
-TensorBSplines Regression Training:  60%|██████    | 6000/10000 [09:51<06:31, 10.22it/s]i = 6000,si = 2343.4828540838103
-TensorBSplines Regression Training:  61%|██████    | 6100/10000 [10:01<06:26, 10.10it/s]i = 6100,si = 2363.714815833911
-TensorBSplines Regression Training:  62%|██████▏   | 6200/10000 [10:10<06:14, 10.15it/s]i = 6200,si = 2472.1203172012406
-TensorBSplines Regression Training:  63%|██████▎   | 6300/10000 [10:20<06:03, 10.17it/s]i = 6300,si = 2456.406338333274
-TensorBSplines Regression Training:  64%|██████▍   | 6400/10000 [10:30<05:53, 10.17it/s]i = 6400,si = 2254.2719412003294
-TensorBSplines Regression Training:  65%|██████▌   | 6501/10000 [10:40<05:42, 10.22it/s]i = 6500,si = 2324.526029535632
-TensorBSplines Regression Training:  66%|██████▌   | 6600/10000 [10:50<05:37, 10.08it/s]i = 6600,si = 2416.6320678762395
-TensorBSplines Regression Training:  67%|██████▋   | 6700/10000 [11:00<05:24, 10.15it/s]i = 6700,si = 2311.1276491058293
-TensorBSplines Regression Training:  68%|██████▊   | 6800/10000 [11:10<05:12, 10.24it/s]i = 6800,si = 2249.6991294686327
-TensorBSplines Regression Training:  69%|██████▉   | 6900/10000 [11:19<05:06, 10.13it/s]i = 6900,si = 2454.0743969740274
-TensorBSplines Regression Training:  70%|███████   | 7000/10000 [11:29<04:54, 10.17it/s]i = 7000,si = 2395.2254021701547
-TensorBSplines Regression Training:  71%|███████   | 7100/10000 [11:39<04:44, 10.20it/s]i = 7100,si = 2328.1625496542356
-TensorBSplines Regression Training:  72%|███████▏  | 7200/10000 [11:49<04:36, 10.13it/s]i = 7200,si = 2309.33172068253
-TensorBSplines Regression Training:  73%|███████▎  | 7300/10000 [11:59<04:25, 10.16it/s]i = 7300,si = 2345.008145069472
-TensorBSplines Regression Training:  74%|███████▍  | 7400/10000 [12:09<04:17, 10.12it/s]i = 7400,si = 2403.069025109969
-TensorBSplines Regression Training:  75%|███████▌  | 7500/10000 [12:19<04:21,  9.56it/s]i = 7500,si = 2191.3660695455114
-TensorBSplines Regression Training:  76%|███████▌  | 7600/10000 [12:28<03:57, 10.12it/s]i = 7600,si = 2582.7736121502603
-TensorBSplines Regression Training:  77%|███████▋  | 7700/10000 [12:38<03:44, 10.26it/s]i = 7700,si = 2348.6084777047267
-TensorBSplines Regression Training:  78%|███████▊  | 7800/10000 [12:48<03:35, 10.23it/s]i = 7800,si = 2389.703860216575
-TensorBSplines Regression Training:  79%|███████▉  | 7900/10000 [12:58<03:25, 10.23it/s]i = 7900,si = 2321.0457450938616
-TensorBSplines Regression Training:  80%|████████  | 8000/10000 [13:08<03:16, 10.19it/s]i = 8000,si = 2514.7582969754503
-TensorBSplines Regression Training:  81%|████████  | 8101/10000 [13:18<03:06, 10.18it/s]i = 8100,si = 2391.003333212199
-TensorBSplines Regression Training:  82%|████████▏ | 8201/10000 [13:27<02:55, 10.22it/s]i = 8200,si = 2479.6366608082626
-TensorBSplines Regression Training:  83%|████████▎ | 8301/10000 [13:37<02:46, 10.18it/s]i = 8300,si = 2442.0318011324025
-TensorBSplines Regression Training:  84%|████████▍ | 8401/10000 [13:47<02:37, 10.14it/s]i = 8400,si = 2249.178626819302
-TensorBSplines Regression Training:  85%|████████▌ | 8501/10000 [13:57<02:28, 10.10it/s]i = 8500,si = 2263.243296339003
-TensorBSplines Regression Training:  86%|████████▌ | 8601/10000 [14:07<02:17, 10.17it/s]i = 8600,si = 2333.3316247876855
-TensorBSplines Regression Training:  87%|████████▋ | 8701/10000 [14:17<02:07, 10.21it/s]i = 8700,si = 2335.1219899478765
-TensorBSplines Regression Training:  88%|████████▊ | 8801/10000 [14:26<01:57, 10.18it/s]i = 8800,si = 2365.4252846618692
-TensorBSplines Regression Training:  89%|████████▉ | 8901/10000 [14:36<01:47, 10.20it/s]i = 8900,si = 2335.43999684026
-TensorBSplines Regression Training:  90%|█████████ | 9001/10000 [14:46<01:41,  9.83it/s]i = 9000,si = 2434.1132287397113
-TensorBSplines Regression Training:  91%|█████████ | 9101/10000 [14:56<01:27, 10.22it/s]i = 9100,si = 2467.449935489394
-TensorBSplines Regression Training:  92%|█████████▏| 9201/10000 [15:06<01:18, 10.17it/s]i = 9200,si = 2225.1899415396542
-TensorBSplines Regression Training:  93%|█████████▎| 9301/10000 [15:15<01:08, 10.20it/s]i = 9300,si = 2297.1079485313835
-TensorBSplines Regression Training:  94%|█████████▍| 9401/10000 [15:25<01:00,  9.87it/s]i = 9400,si = 2270.593852043013
-TensorBSplines Regression Training:  95%|█████████▌| 9501/10000 [15:35<00:48, 10.22it/s]i = 9500,si = 2431.5124903094343
-TensorBSplines Regression Training:  96%|█████████▌| 9601/10000 [15:45<00:39, 10.18it/s]i = 9600,si = 2279.8928951524967
-TensorBSplines Regression Training:  97%|█████████▋| 9701/10000 [15:55<00:29, 10.18it/s]i = 9700,si = 2263.753781127076
-TensorBSplines Regression Training:  98%|█████████▊| 9801/10000 [16:05<00:19, 10.16it/s]i = 9800,si = 2216.434491756109
-TensorBSplines Regression Training:  99%|█████████▉| 9901/10000 [16:15<00:09, 10.18it/s]i = 9900,si = 2237.3328447500426
-TensorBSplines Regression Training: 100%|██████████| 10000/10000 [16:24<00:00, 10.15it/s]
-RMSE for TensorBSplines regressor for the diabetes dataset = 56.209529969723356
+TensorBSplines Regression Training:   0%|          | 0/10000 [00:00<?, ?it/s]i = 0,si = 28105.57719216265
+TensorBSplines Regression Training:   1%|          | 101/10000 [00:13<15:09, 10.88it/s]i = 100,si = 18822.425567928152
+TensorBSplines Regression Training:   2%|▏         | 201/10000 [00:22<14:17, 11.43it/s]i = 200,si = 11437.280883912037
+TensorBSplines Regression Training:   3%|▎         | 301/10000 [00:31<14:00, 11.54it/s]i = 300,si = 7516.120269427755
+TensorBSplines Regression Training:   4%|▍         | 401/10000 [00:39<13:59, 11.43it/s]i = 400,si = 6091.688398302234
+TensorBSplines Regression Training:   5%|▌         | 501/10000 [00:48<14:12, 11.14it/s]i = 500,si = 5163.984093972153
+TensorBSplines Regression Training:   6%|▌         | 601/10000 [00:57<13:38, 11.48it/s]i = 600,si = 4550.760782942848
+TensorBSplines Regression Training:   7%|▋         | 701/10000 [01:06<13:30, 11.47it/s]i = 700,si = 4253.703355639839
+TensorBSplines Regression Training:   8%|▊         | 801/10000 [01:15<13:21, 11.48it/s]i = 800,si = 3951.523817451216
+TensorBSplines Regression Training:   9%|▉         | 901/10000 [01:23<13:15, 11.44it/s]i = 900,si = 3671.5841889094436
+TensorBSplines Regression Training:  10%|█         | 1001/10000 [01:32<13:05, 11.46it/s]i = 1000,si = 3537.983756987203
+TensorBSplines Regression Training:  11%|█         | 1101/10000 [01:41<12:51, 11.53it/s]i = 1100,si = 3234.9850777154484
+TensorBSplines Regression Training:  12%|█▏        | 1201/10000 [01:50<12:40, 11.57it/s]i = 1200,si = 3320.396239775108
+TensorBSplines Regression Training:  13%|█▎        | 1301/10000 [01:58<12:36, 11.50it/s]i = 1300,si = 3206.4902118424043
+TensorBSplines Regression Training:  14%|█▍        | 1401/10000 [02:07<12:25, 11.54it/s]i = 1400,si = 2981.5160283125833
+TensorBSplines Regression Training:  15%|█▌        | 1501/10000 [02:16<12:21, 11.46it/s]i = 1500,si = 2989.916598015254
+TensorBSplines Regression Training:  16%|█▌        | 1601/10000 [02:24<12:06, 11.57it/s]i = 1600,si = 2975.091259266198
+TensorBSplines Regression Training:  17%|█▋        | 1701/10000 [02:33<11:57, 11.56it/s]i = 1700,si = 2962.855269467438
+TensorBSplines Regression Training:  18%|█▊        | 1801/10000 [02:42<11:45, 11.62it/s]i = 1800,si = 2862.106017961409
+TensorBSplines Regression Training:  19%|█▉        | 1901/10000 [02:50<11:48, 11.43it/s]i = 1900,si = 2751.942159727435
+TensorBSplines Regression Training:  20%|██        | 2001/10000 [02:59<11:30, 11.59it/s]i = 2000,si = 2684.839984381193
+TensorBSplines Regression Training:  21%|██        | 2101/10000 [03:08<11:25, 11.53it/s]i = 2100,si = 2801.427029278786
+TensorBSplines Regression Training:  22%|██▏       | 2201/10000 [03:16<11:18, 11.50it/s]i = 2200,si = 2643.500971958667
+TensorBSplines Regression Training:  23%|██▎       | 2301/10000 [03:25<11:20, 11.32it/s]i = 2300,si = 2709.863558444273
+TensorBSplines Regression Training:  24%|██▍       | 2401/10000 [03:34<10:59, 11.52it/s]i = 2400,si = 2814.14008670121
+TensorBSplines Regression Training:  25%|██▌       | 2501/10000 [03:42<10:51, 11.52it/s]i = 2500,si = 2666.9133444794134
+TensorBSplines Regression Training:  26%|██▌       | 2601/10000 [03:51<10:40, 11.56it/s]i = 2600,si = 2628.8212581534767
+TensorBSplines Regression Training:  27%|██▋       | 2701/10000 [04:00<10:43, 11.34it/s]i = 2700,si = 2732.004612186121
+TensorBSplines Regression Training:  28%|██▊       | 2801/10000 [04:09<10:32, 11.39it/s]i = 2800,si = 2647.0531699465414
+TensorBSplines Regression Training:  29%|██▉       | 2901/10000 [04:17<10:13, 11.57it/s]i = 2900,si = 2787.868580627919
+TensorBSplines Regression Training:  30%|███       | 3001/10000 [04:26<10:04, 11.58it/s]i = 3000,si = 2452.250268848565
+TensorBSplines Regression Training:  31%|███       | 3101/10000 [04:35<10:00, 11.48it/s]i = 3100,si = 2538.723786036632
+TensorBSplines Regression Training:  32%|███▏      | 3201/10000 [04:43<09:56, 11.41it/s]i = 3200,si = 2553.3838512038437
+TensorBSplines Regression Training:  33%|███▎      | 3301/10000 [04:52<09:38, 11.58it/s]i = 3300,si = 2592.5263679805325
+TensorBSplines Regression Training:  34%|███▍      | 3401/10000 [05:01<09:28, 11.61it/s]i = 3400,si = 2608.6029479601884
+TensorBSplines Regression Training:  35%|███▌      | 3501/10000 [05:10<09:28, 11.44it/s]i = 3500,si = 2358.156538047078
+TensorBSplines Regression Training:  36%|███▌      | 3601/10000 [05:18<09:15, 11.52it/s]i = 3600,si = 2624.254872572687
+TensorBSplines Regression Training:  37%|███▋      | 3701/10000 [05:27<09:02, 11.60it/s]i = 3700,si = 2341.0892438266487
+TensorBSplines Regression Training:  38%|███▊      | 3801/10000 [05:35<08:53, 11.62it/s]i = 3800,si = 2561.3509399532904
+TensorBSplines Regression Training:  39%|███▉      | 3901/10000 [05:44<08:50, 11.50it/s]i = 3900,si = 2495.118108440391
+TensorBSplines Regression Training:  40%|████      | 4001/10000 [05:53<08:37, 11.59it/s]i = 4000,si = 2629.3250336563624
+TensorBSplines Regression Training:  41%|████      | 4101/10000 [06:01<08:28, 11.60it/s]i = 4100,si = 2573.4203333357204
+TensorBSplines Regression Training:  42%|████▏     | 4201/10000 [06:10<08:30, 11.36it/s]i = 4200,si = 2665.298085546029
+TensorBSplines Regression Training:  43%|████▎     | 4301/10000 [06:19<08:12, 11.58it/s]i = 4300,si = 2548.1778196071764
+TensorBSplines Regression Training:  44%|████▍     | 4401/10000 [06:27<08:00, 11.65it/s]i = 4400,si = 2559.193535290387
+TensorBSplines Regression Training:  45%|████▌     | 4501/10000 [06:36<07:55, 11.56it/s]i = 4500,si = 2580.1705776224558
+TensorBSplines Regression Training:  46%|████▌     | 4601/10000 [06:45<08:06, 11.09it/s]i = 4600,si = 2441.5214962184314
+TensorBSplines Regression Training:  47%|████▋     | 4701/10000 [06:53<07:41, 11.49it/s]i = 4700,si = 2562.5241670129267
+TensorBSplines Regression Training:  48%|████▊     | 4801/10000 [07:02<07:31, 11.51it/s]i = 4800,si = 2411.4544737530696
+TensorBSplines Regression Training:  49%|████▉     | 4901/10000 [07:11<07:20, 11.59it/s]i = 4900,si = 2574.983401860613
+TensorBSplines Regression Training:  50%|█████     | 5001/10000 [07:20<07:16, 11.44it/s]i = 5000,si = 2644.1566794934756
+TensorBSplines Regression Training:  51%|█████     | 5101/10000 [07:28<07:06, 11.50it/s]i = 5100,si = 2482.1278554979667
+TensorBSplines Regression Training:  52%|█████▏    | 5201/10000 [07:37<06:55, 11.55it/s]i = 5200,si = 2376.1490373938345
+TensorBSplines Regression Training:  53%|█████▎    | 5301/10000 [07:46<06:47, 11.52it/s]i = 5300,si = 2518.038333554313
+TensorBSplines Regression Training:  54%|█████▍    | 5401/10000 [07:54<06:47, 11.29it/s]i = 5400,si = 2428.775207623189
+TensorBSplines Regression Training:  55%|█████▌    | 5501/10000 [08:03<06:30, 11.53it/s]i = 5500,si = 2449.557343081915
+TensorBSplines Regression Training:  56%|█████▌    | 5601/10000 [08:12<06:19, 11.59it/s]i = 5600,si = 2491.190600059277
+TensorBSplines Regression Training:  57%|█████▋    | 5701/10000 [08:20<06:12, 11.55it/s]i = 5700,si = 2463.331648096283
+TensorBSplines Regression Training:  58%|█████▊    | 5801/10000 [08:29<06:08, 11.39it/s]i = 5800,si = 2439.802526893602
+TensorBSplines Regression Training:  59%|█████▉    | 5901/10000 [08:38<05:54, 11.55it/s]i = 5900,si = 2397.3478789724677
+TensorBSplines Regression Training:  60%|██████    | 6001/10000 [08:47<05:45, 11.59it/s]i = 6000,si = 2395.899228090348
+TensorBSplines Regression Training:  61%|██████    | 6101/10000 [08:55<05:37, 11.55it/s]i = 6100,si = 2404.838469725103
+TensorBSplines Regression Training:  62%|██████▏   | 6201/10000 [09:04<05:30, 11.51it/s]i = 6200,si = 2514.917274197934
+TensorBSplines Regression Training:  63%|██████▎   | 6301/10000 [09:13<05:22, 11.48it/s]i = 6300,si = 2497.94881723227
+TensorBSplines Regression Training:  64%|██████▍   | 6401/10000 [09:21<05:11, 11.56it/s]i = 6400,si = 2304.7330916689775
+TensorBSplines Regression Training:  65%|██████▌   | 6501/10000 [09:30<05:02, 11.57it/s]i = 6500,si = 2390.744190220642
+TensorBSplines Regression Training:  66%|██████▌   | 6601/10000 [09:39<04:58, 11.40it/s]i = 6600,si = 2453.4745730002483
+TensorBSplines Regression Training:  67%|██████▋   | 6701/10000 [09:47<04:45, 11.54it/s]i = 6700,si = 2353.8277676937532
+TensorBSplines Regression Training:  68%|██████▊   | 6801/10000 [09:56<04:37, 11.52it/s]i = 6800,si = 2304.3638834296694
+TensorBSplines Regression Training:  69%|██████▉   | 6901/10000 [10:05<04:29, 11.49it/s]i = 6900,si = 2513.764808256418
+TensorBSplines Regression Training:  70%|███████   | 7000/10000 [10:14<04:19, 11.55it/s]i = 7000,si = 2460.681523124774
+TensorBSplines Regression Training:  71%|███████   | 7100/10000 [10:22<04:11, 11.53it/s]i = 7100,si = 2374.956481703138
+TensorBSplines Regression Training:  72%|███████▏  | 7200/10000 [10:31<04:01, 11.60it/s]i = 7200,si = 2368.425104683527
+TensorBSplines Regression Training:  73%|███████▎  | 7300/10000 [10:40<03:54, 11.54it/s]i = 7300,si = 2390.801442177319
+TensorBSplines Regression Training:  74%|███████▍  | 7400/10000 [10:49<03:45, 11.52it/s]i = 7400,si = 2463.4384874238267
+TensorBSplines Regression Training:  75%|███████▌  | 7500/10000 [10:57<03:36, 11.56it/s]i = 7500,si = 2221.7158285971523
+TensorBSplines Regression Training:  76%|███████▌  | 7600/10000 [11:06<03:27, 11.56it/s]i = 7600,si = 2653.950398964846
+TensorBSplines Regression Training:  77%|███████▋  | 7700/10000 [11:15<03:19, 11.50it/s]i = 7700,si = 2413.6158211658576
+TensorBSplines Regression Training:  78%|███████▊  | 7800/10000 [11:23<03:14, 11.33it/s]i = 7800,si = 2432.8549110844156
+TensorBSplines Regression Training:  79%|███████▉  | 7900/10000 [11:32<03:01, 11.56it/s]i = 7900,si = 2361.6210892944155
+TensorBSplines Regression Training:  80%|████████  | 8000/10000 [11:41<02:51, 11.67it/s]i = 8000,si = 2572.436440096552
+TensorBSplines Regression Training:  81%|████████  | 8100/10000 [11:49<02:46, 11.42it/s]i = 8100,si = 2454.9238057726047
+TensorBSplines Regression Training:  82%|████████▏ | 8200/10000 [11:58<02:40, 11.25it/s]i = 8200,si = 2538.6678885161855
+TensorBSplines Regression Training:  83%|████████▎ | 8300/10000 [12:07<02:29, 11.37it/s]i = 8300,si = 2497.8151447344558
+TensorBSplines Regression Training:  84%|████████▍ | 8400/10000 [12:16<02:19, 11.47it/s]i = 8400,si = 2335.4595169838253
+TensorBSplines Regression Training:  85%|████████▌ | 8500/10000 [12:25<02:13, 11.20it/s]i = 8500,si = 2326.9909930303374
+TensorBSplines Regression Training:  86%|████████▌ | 8600/10000 [12:34<02:02, 11.39it/s]i = 8600,si = 2400.08511020546
+TensorBSplines Regression Training:  87%|████████▋ | 8700/10000 [12:42<01:53, 11.44it/s]i = 8700,si = 2382.678064190003
+TensorBSplines Regression Training:  88%|████████▊ | 8800/10000 [12:51<01:45, 11.41it/s]i = 8800,si = 2440.451912952733
+TensorBSplines Regression Training:  89%|████████▉ | 8900/10000 [13:00<01:36, 11.43it/s]i = 8900,si = 2392.4913460601115
+TensorBSplines Regression Training:  90%|█████████ | 9000/10000 [13:09<01:28, 11.32it/s]i = 9000,si = 2478.2079964927
+TensorBSplines Regression Training:  91%|█████████ | 9100/10000 [13:17<01:19, 11.37it/s]i = 9100,si = 2536.1536367521435
+TensorBSplines Regression Training:  92%|█████████▏| 9200/10000 [13:26<01:10, 11.42it/s]i = 9200,si = 2302.875481095161
+TensorBSplines Regression Training:  93%|█████████▎| 9300/10000 [13:35<01:01, 11.43it/s]i = 9300,si = 2350.757608512369
+TensorBSplines Regression Training:  94%|█████████▍| 9400/10000 [13:44<00:52, 11.43it/s]i = 9400,si = 2331.0695977614737
+TensorBSplines Regression Training:  95%|█████████▌| 9500/10000 [13:53<00:43, 11.45it/s]i = 9500,si = 2499.539709072924
+TensorBSplines Regression Training:  96%|█████████▌| 9600/10000 [14:01<00:35, 11.37it/s]i = 9600,si = 2332.374273238058
+TensorBSplines Regression Training:  97%|█████████▋| 9700/10000 [14:10<00:26, 11.50it/s]i = 9700,si = 2333.3219914389147
+TensorBSplines Regression Training:  98%|█████████▊| 9800/10000 [14:19<00:17, 11.41it/s]i = 9800,si = 2297.0278909250605
+TensorBSplines Regression Training:  99%|█████████▉| 9900/10000 [14:28<00:08, 11.39it/s]i = 9900,si = 2325.3491610397973
+TensorBSplines Regression Training: 100%|██████████| 10000/10000 [14:37<00:00, 11.40it/s]
+RMSE for TensorBSplines regressor for the diabetes dataset = 54.926424384406886
 
 Process finished with exit code 0
-
