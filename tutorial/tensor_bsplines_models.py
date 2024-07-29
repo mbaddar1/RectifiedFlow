@@ -27,17 +27,31 @@ TensorBSplines Classifier Accuracy for dataset circles =0.9921875
 =======================
 For Regression
 ------
-Diabetes dataset
+b_splines_degree = 2
+basis_dim = 51
+dataset_name = "trig"
+MLP Regression training time for dataset trig = 377168 microseconds
+numel for MLPRegressor for dataset trig = 10501
+RMSE for MLP regressor for dataset trig = 0.004759512690025826
 
-1) MLP
-MLP Regression training time = 92663 microseconds
-numel for MLPRegressor = 11301
-RMSE for MLP regressor for the diabetes dataset = 51.14554004371418
 
-2) TensorBSplines
-numel for TensorBSplines-Regressor = 110
-TensorBSplines Regressor training time = 993522 microseconds
-RMSE for TensorBSplines regressor for the diabetes dataset = 54.926424384406886
+numel for TensorBSplines-Regressor in dataset trig= 102
+TensorBSplines Regressor training time for dataset trig= 296568 microseconds
+RMSE for TensorBSplines regressor for dataset trig = 0.007229183679341802
+
+******************************************************************************************************************************
+
+b_splines_degree = 2
+basis_dim = 11
+dataset_name = "diabetes"
+MLP Regression training time for dataset diabetes = 185401 microseconds
+numel for MLPRegressor for dataset diabetes = 11301
+RMSE for MLP regressor for dataset diabetes = 51.14554004371418
+
+numel for TensorBSplines-Regressor in dataset diabetes= 110
+TensorBSplines Regressor training time for dataset diabetes= 934656 microseconds
+RMSE for TensorBSplines regressor for dataset diabetes = 54.926424384406886
+*********************************************************************************************************************************
 
 __________________________________________________
 
@@ -96,7 +110,7 @@ def get_mlp_numel(mlp):
     return numel
 
 
-def get_data(dataset_name, n_samples):
+def get_clf_data(dataset_name, n_samples):
     if dataset_name == "circles":
         X, y = make_circles(factor=0.3, noise=0.05, random_state=SEED, n_samples=n_samples)
 
@@ -107,15 +121,29 @@ def get_data(dataset_name, n_samples):
     return X, y
 
 
-class TensorBSplinesModel(torch.nn.Module):
-    def __init__(self, data_dim, basis_dim, x_range, degree, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+def get_reg_data(dataset_name, n_samples):
+    if dataset_name == "diabetes":
+        data_ = load_diabetes()
+        X, y = data_.data, data_.target
+        return torch.tensor(X), torch.tensor(y)
+    elif dataset_name == "trig":
+        X = torch.distributions.Uniform(low=-1, high=1).sample(sample_shape=torch.Size([n_samples, 2]))
+        y = 0.2 + torch.sin(X[:, 0]) + 0.8 * torch.cos(X[:, 1])
+        return X, y
+    else:
+        raise ValueError(f"unknown dataset_name = {dataset_name}")
 
-        self.A = torch.nn.Parameter(
-            torch.distributions.Uniform(low=-0.1, high=0.1).sample(sample_shape=torch.Size([data_dim, basis_dim])))
-        assert data_dim == len(x_range)
+
+class TensorBSplinesModel(torch.nn.Module):
+    def __init__(self, input_dim, output_dim, basis_dim, x_range, degree, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.output_dim = output_dim
+        self.A_list = torch.nn.ParameterList([torch.nn.Parameter(
+            torch.distributions.Uniform(low=-0.1, high=0.1).sample(sample_shape=torch.Size([input_dim, basis_dim]))) for
+            _ in range(output_dim)])
+        assert input_dim == len(x_range)
         self.bsp = []
-        for d in range(data_dim):
+        for d in range(input_dim):
             self.bsp.append(BSplinesBasis(x_low=x_range[d][0], x_high=x_range[d][1], n_knots=basis_dim, degree=degree))
 
     def forward(self, x):
@@ -124,11 +152,18 @@ class TensorBSplinesModel(torch.nn.Module):
         x_list = x.T.tolist()
         basis_list = list(map(lambda d: self.bsp[d].calculate_basis_vector(x_list[d]), list(range(D))))
         basis_tensor = torch.tensor(basis_list).permute(1, 0, 2)
-        y = torch.einsum('bij,ij->b', basis_tensor, self.A)
-        return y
+        yd_list = []
+        for d in range(self.output_dim):
+            yd = torch.einsum('bij,ij->b', basis_tensor, self.A_list[d])
+            yd_list.append(yd)
+        y_tensor = torch.stack(yd_list, dim=1)
+        return y_tensor
 
     def numel(self):
-        return torch.numel(self.A)
+        return int(np.sum([torch.numel(A) for A in self.A_list]))
+
+    def norm(self):
+        return np.sum([torch.linalg.norm(A).item() for A in self.A_list])
 
     @staticmethod
     def get_data_range(x: torch.Tensor):
@@ -148,16 +183,16 @@ class TensorBSplinesModel(torch.nn.Module):
 
 
 class TensorBSplinesRegressor(TensorBSplinesModel):
-    def __init__(self, data_dim, basis_dim, x_range, degree, *args, **kwargs):
-        super().__init__(data_dim, basis_dim, x_range, degree, *args, **kwargs)
+    def __init__(self, input_dim, output_dim, basis_dim, x_range, degree, *args, **kwargs):
+        super().__init__(input_dim, output_dim, basis_dim, x_range, degree, *args, **kwargs)
 
     def forward(self, x):
         return super().forward(x)
 
 
 class TensorBSplinesClassifier(TensorBSplinesModel):
-    def __init__(self, data_dim, basis_dim, x_range, degree, *args, **kwargs):
-        super().__init__(data_dim, basis_dim, x_range, degree, *args, **kwargs)
+    def __init__(self, input_dim, output_dim, basis_dim, x_range, degree, *args, **kwargs):
+        super().__init__(input_dim, output_dim, basis_dim, x_range, degree, *args, **kwargs)
 
     def forward(self, x: torch.Tensor):
         out = super().forward(x)
@@ -174,7 +209,7 @@ def test_classifier():
     train_size = batch_size * 16
     test_size = batch_size * 8
     test_ratio = float(test_size) / train_size
-    dataset_name = "moons"
+    dataset_name = "circles"
     tol = 1e-4
     train_iter = 5000
     lr = 0.05
@@ -185,7 +220,7 @@ def test_classifier():
                         early_stopping=False,
                         learning_rate_init=lr, learning_rate="adaptive", batch_size=batch_size)
 
-    X, y = get_data(dataset_name=dataset_name, n_samples=train_size + test_size)
+    X, y = get_clf_data(dataset_name=dataset_name, n_samples=train_size + test_size)
     D = X.shape[1]
     plt.clf()
     plt.scatter(X[:, 0], X[:, 1], c=y)
@@ -213,7 +248,8 @@ def test_classifier():
 
     # Full-Tensor-BSplines Classifier
     x_range = TensorBSplinesModel.get_data_range(x=torch.tensor(X_train))
-    tns_clf = TensorBSplinesClassifier(data_dim=D, basis_dim=basis_dim, x_range=x_range, degree=bspline_degree)
+    tns_clf = TensorBSplinesClassifier(input_dim=D, basis_dim=basis_dim, output_dim=1, x_range=x_range,
+                                       degree=bspline_degree)
 
     optimizer = torch.optim.Adam(tns_clf.parameters(), lr=lr)
     loss_fn = torch.nn.BCELoss()
@@ -226,12 +262,12 @@ def test_classifier():
     start_time = datetime.now()
     for i in tqdm(range(int(n_epochs) + 1), desc="training"):
         optimizer.zero_grad()
-        X, y = get_data(dataset_name=dataset_name, n_samples=batch_size)
+        X, y = get_clf_data(dataset_name=dataset_name, n_samples=batch_size)
         X = torch.tensor(X)
         y = torch.tensor(y).double()
         y_hat = tns_clf(X)
         y_hat_copy = torch.clone(y_hat)
-        li = loss_fn(y_hat, y)
+        li = loss_fn(y_hat, y.view(-1, 1))
 
         if si is None:
             si = li
@@ -260,7 +296,7 @@ def test_classifier():
     plt.title(f"Loss Curve for TensorBsplines Classifier for dataset : {dataset_name}")
     plt.savefig(f"clf_tns_bsplines_loss_curve_{dataset_name}.png")
     # Test data
-    X_test, y_test = get_data(dataset_name=dataset_name, n_samples=test_size)
+    X_test, y_test = get_clf_data(dataset_name=dataset_name, n_samples=test_size)
     y_hat = tns_clf(torch.tensor(X_test))
     y_hat.detach().apply_(lambda v: 1 if v >= 0.5 else 0)
     print(f"TensorBSplinesClassifier numel {tns_clf.numel()}")
@@ -281,16 +317,12 @@ def test_classifier():
 def test_regression():
     # https://scikit-learn.org/0.16/auto_examples/linear_model/plot_ols.html#example-linear-model-plot-ols-py
     # MLP Regressor
-    data_ = load_diabetes()
+    dataset_name = "trig"
     mlp_reg = MLPRegressor(hidden_layer_sizes=(100, 100), max_iter=5000, verbose=True, early_stopping=False)
-    X = data_.data
-    y = data_.target
+    X, y = get_reg_data(dataset_name=dataset_name, n_samples=10000)
     D = X.shape[1]
-    x_min = np.min(X)
-    x_max = np.max(X)
     b_splines_degree = 2
-    basis_dim = 11
-    print(f"data range = {(x_min, x_max)}")
+    basis_dim = 51
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=SEED)
     N_train = X_train.shape[0]
     print("########## Training MLP Regressor############")
@@ -300,15 +332,17 @@ def test_regression():
     y_hat = mlp_reg.predict(X_test)
     rmse_ = np.sqrt(mean_squared_error(y_true=y_test, y_pred=y_hat))
 
-    print(f"MLP Regression training time = {(end_time - start_time).microseconds} microseconds")
+    print(
+        f"MLP Regression training time for dataset {dataset_name} = {(end_time - start_time).microseconds} microseconds")
     nel = get_mlp_numel(mlp_reg)
-    print(f"numel for MLPRegressor = {nel}")
-    print(f"RMSE for MLP regressor for the diabetes dataset = {rmse_}")
+    print(f"numel for MLPRegressor for dataset {dataset_name} = {nel}")
+    print(f"RMSE for MLP regressor for dataset {dataset_name} = {rmse_}")
 
     # TensorBSplines
     print("############## Training TensorBSplines Regressor ################")
-    x_range = TensorBSplinesModel.get_data_range(torch.tensor(X))  # get range based on complete dataset: train and test
-    tns_reg = TensorBSplinesRegressor(data_dim=D, basis_dim=basis_dim, x_range=x_range, degree=b_splines_degree)
+    x_range = TensorBSplinesModel.get_data_range(X)  # get range based on complete dataset: train and test
+    tns_reg = TensorBSplinesRegressor(input_dim=D, output_dim=1, basis_dim=basis_dim, x_range=x_range,
+                                      degree=b_splines_degree)
 
     loss_fn = torch.nn.MSELoss()
     batch_size = 64
@@ -320,10 +354,11 @@ def test_regression():
     for i in tqdm(range(10000), desc="TensorBSplines Regression Training"):
         optimizer.zero_grad()
         batch_idx = random.sample(population=indices, k=batch_size)
-        X_batch = torch.tensor(X_train[batch_idx, :])
-        y_batch = torch.tensor(y_train[batch_idx])
+        X_batch = X_train[batch_idx, :]
+        y_batch = y_train[batch_idx]
         y_hat = tns_reg(X_batch)
-        loss = loss_fn(y_hat, y_batch)
+        lambda_ = 1e-3
+        loss = loss_fn(y_hat, y_batch.view(-1, 1)) + lambda_*tns_reg.norm()
         if si is None:
             si = loss.item()
         else:
@@ -332,13 +367,14 @@ def test_regression():
             print(f"i = {i},si = {si}")
         loss.backward()
         optimizer.step()
-    end_time = end_time.now()
+    end_time = datetime.now()
     nel = tns_reg.numel()
-    print(f"numel for TensorBSplines-Regressor = {nel}")
-    print(f"TensorBSplines Regressor training time = {(end_time - start_time).microseconds} microseconds")
+    print(f"numel for TensorBSplines-Regressor in dataset {dataset_name}= {nel}")
+    print(
+        f"TensorBSplines Regressor training time for dataset {dataset_name}= {(end_time - start_time).microseconds} microseconds")
     y_hat = tns_reg(torch.tensor(X_test))
     rmse_ = np.sqrt(mean_squared_error(y_true=y_test, y_pred=y_hat.detach().numpy()))
-    print(f"RMSE for TensorBSplines regressor for the diabetes dataset = {rmse_}")
+    print(f"RMSE for TensorBSplines regressor for dataset {dataset_name} = {rmse_}")
 
 
 if __name__ == '__main__':

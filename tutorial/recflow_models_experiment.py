@@ -37,6 +37,7 @@ from torch.distributions.mixture_same_family import MixtureSameFamily
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from RectifiedFlow.tutorial.seed import set_global_seed
+from RectifiedFlow.tutorial.tensor_bsplines_models import TensorBSplinesRegressor, TensorBSplinesModel
 from functional_tt_fabrique import orthpoly, Extended_TensorTrain
 from geomloss import SamplesLoss
 from hyperopt import hp, fmin, tpe, Trials, STATUS_OK
@@ -167,6 +168,62 @@ class MLP(nn.Module):
         return x
 
 
+class RectifiedFlowTensorBsplines:
+    def __init__(self, basis_dim, x_range, input_dim, out_dim, basis_degree):
+        assert len(x_range) == out_dim
+        self.tns_bsp_regs = []
+        for d in range(out_dim):
+            self.tns_bsp_regs.append(
+                TensorBSplinesRegressor(input_dim=input_dim, basis_dim=basis_dim, x_range=x_range, degree=basis_degree))
+
+    # FIXME , repeated fn , need to make a base class for Recflow
+    def sample_ode(self, z0: torch.Tensor, N: int):
+        pass
+
+    # FIXME , repeated fn , need to make a base class for Recflow
+    def v(self, zt, t) -> torch.Tensor:
+        data_dim = zt.shape[1]
+        zt_aug = torch.cat([zt, t], dim=1)
+        pred_list = []
+        for d in range(data_dim):
+            pred_vec = self.ETTs[d](zt_aug).view(-1, 1)
+            pred_list.append(pred_vec)
+        pred_tensor = torch.cat(tensors=pred_list, dim=1)
+        return pred_tensor
+
+
+def train_recflow_tensor_bsplines(recflow_tns: RectifiedFlowTensorBsplines, X0: torch.Tensor, X1: torch.Tensor,
+                                  train_iterations: int, batch_size: int):
+    z_t, t, target = get_train_tuple(z0=X0, z1=X1)
+    z_t_aug = torch.concat([z_t, t], dim=1)
+    loss_fn = torch.nn.MSELoss()
+    for i, tns_reg in enumerate(recflow_tns.tns_bsp_regs):
+        print(f"training for d = {i}")
+        params = tns_reg.parameters()
+        optimizer = torch.optim.Adam(params=params, lr=1e-3)
+        for j in tqdm(range(train_iterations), desc=f"tns reg opt for output dim  ={i}"):
+            """
+            indices = torch.randperm(len(pairs))[:batchsize]
+            batch = pairs[indices]
+            z0 = batch[:, 0].detach().clone()
+            z1 = batch[:, 1].detach().clone()
+            z_t, t, target = get_train_tuple(z0=z0, z1=z1)
+    
+            pred = rectified_flow_nn.model(z_t, t)
+            loss = (target - pred).view(pred.shape[0], -1).abs().pow(2).sum(dim=1)
+            """
+            optimizer.zero_grad()
+            indices = torch.randperm(z_t_aug.shape[0])[:]
+            z_t_aug_batch = z_t_aug[indices]
+            target_batch = target[indices][:, i]
+            y_hat = tns_reg(z_t_aug_batch)
+            loss = loss_fn(y_hat, target_batch)
+            print(loss.item())
+            loss.backward()
+            optimizer.step()
+        print(f"Finished training loop")
+
+
 class RectifiedFlowTT:
     def __init__(self, basis_degrees, limits, data_dim, ranks):
         # basis_degrees = [basis_degree] * (data_dim + 1)  # hotfix by charles that made the GMM work
@@ -176,6 +233,7 @@ class RectifiedFlowTT:
         op = orthpoly(basis_degrees, domain)
         self.ETTs = [Extended_TensorTrain(op, ranks) for i in range(data_dim)]
 
+    # FIXME , repeated fn , need to make a base class for Recflow
     def sample_ode(self, z0: torch.Tensor, N: int):
         dt = 1. / N
         traj = []  # to store the trajectory
@@ -190,6 +248,7 @@ class RectifiedFlowTT:
             traj.append(z.detach().clone())
         return traj
 
+    # FIXME , repeated fn , need to make a base class for Recflow
     def v(self, zt, t) -> torch.Tensor:
         data_dim = zt.shape[1]
         zt_aug = torch.cat([zt, t], dim=1)
@@ -206,9 +265,10 @@ class RectifiedFlowNN:
         self.model = model
         self.N = num_steps
 
+    # FIXME , repeated fn , need to make a base class for Recflow
     @torch.no_grad()
     def sample_ode(self, z0=None, N=None):
-        ### NOTE: Use Euler method to sample from the learned flow
+        # NOTE: Use Euler method to sample from the learned flow
         if N is None:
             N = self.N
         dt = 1. / N
@@ -283,8 +343,10 @@ def hopt_objective(args):
 
 def tt_recflow_hopt(init_model: Distribution, hopt_max_evals: int, target_dataset_name: str):
     # https://github.com/hyperopt/hyperopt/issues/835
-    space = {'r': hp.randint('r', 8, 8 + 1),
-             'd': hp.randint('d', 30, 30 + 1),
+    space = {'r': hp.randint('r', 8, 20),
+             'd': hp.randint('d', 5, 20),
+             # TODO reg param
+             #  Time Descritization
              'init_model': init_model,
              'dataset_name': target_dataset_name,
              'N': 10000}
@@ -307,7 +369,10 @@ if __name__ == '__main__':
     COMP = 3
     n_samples = 10000
     data_dim = 2
-    model_type = "tt"  # can be nn or tt
+    model_type = "tt"  # can be nn,tt,tb
+    # nn is neural network
+    # tt is tensor train with legendre poly
+    # tb tensor bsplines
     do_hyperopt = False
     hopt_max_evals = 100
     target_dataset_name = "moons"
@@ -374,6 +439,11 @@ if __name__ == '__main__':
             #   calculate for the same drawn data
             print("tt recflow training finished , next step is to generate samples ")
             draw_plot(recflow_model, z0=x0_test, z1=samples_1.detach().clone(), N=2000, r=ranks, d=basis_degree)
+    elif model_type=="tb":
+        x_range = TensorBSplinesModel.get_data_range(samples_0)
+        x_range.append([0,1]) # for time
+        tns_bsplines_reg = TensorBSplinesRegressor(input_dim=3,)
+        train_recflow_tensor_bsplines()
     else:
         raise ValueError(f"Unsupported recflow model type : {type(model_type)}")
 
