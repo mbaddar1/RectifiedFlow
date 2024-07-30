@@ -77,9 +77,12 @@ import sys
 
 import torch.nn
 from sklearn.datasets import make_circles, make_moons, load_diabetes
+from sklearn.linear_model import Ridge
 from sklearn.metrics import accuracy_score, mean_squared_error
 from sklearn.model_selection import train_test_split
 from sklearn.neural_network import MLPClassifier, MLPRegressor
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import SplineTransformer
 from tqdm import tqdm
 from matplotlib import pyplot as plt
 import random
@@ -127,8 +130,11 @@ def get_reg_data(dataset_name, n_samples):
         X, y = data_.data, data_.target
         return torch.tensor(X), torch.tensor(y)
     elif dataset_name == "trig":
-        X = torch.distributions.Uniform(low=-1, high=1).sample(sample_shape=torch.Size([n_samples, 2]))
-        y = 0.2 + torch.sin(X[:, 0]) + 0.8 * torch.cos(X[:, 1])
+        mvn_1 = torch.distributions.Normal(loc=0,scale=0.1)
+        mvn_2 = torch.distributions.MultivariateNormal(loc=torch.tensor([0.0, 0.0]), covariance_matrix=torch.eye(2))
+        X = mvn_2.sample(sample_shape=torch.Size([n_samples]))
+        y = 0.2 + torch.sin(torch.pi/4.0*X[:, 0]) + 0.8 * torch.cos(2*torch.pi*X[:, 1])
+        y+= mvn_1.sample(sample_shape=torch.Size([n_samples]))
         return X, y
     else:
         raise ValueError(f"unknown dataset_name = {dataset_name}")
@@ -139,8 +145,10 @@ class TensorBSplinesModel(torch.nn.Module):
         super().__init__(*args, **kwargs)
         self.output_dim = output_dim
         self.A_list = torch.nn.ParameterList([torch.nn.Parameter(
-            torch.distributions.Uniform(low=-0.1, high=0.1).sample(sample_shape=torch.Size([input_dim, basis_dim]))) for
+            torch.distributions.Uniform(low=-0.01, high=0.01).sample(sample_shape=torch.Size([input_dim, basis_dim])))
+            for
             _ in range(output_dim)])
+        self.b = torch.nn.Parameter(torch.distributions.Uniform(low=-0.1,high=0.1).sample(sample_shape=torch.Size([output_dim])))
         assert input_dim == len(x_range)
         self.bsp = []
         for d in range(input_dim):
@@ -154,7 +162,7 @@ class TensorBSplinesModel(torch.nn.Module):
         basis_tensor = torch.tensor(basis_list).permute(1, 0, 2)
         yd_list = []
         for d in range(self.output_dim):
-            yd = torch.einsum('bij,ij->b', basis_tensor, self.A_list[d])
+            yd = torch.einsum('bij,ij->b', basis_tensor, self.A_list[d])+self.b[d]
             yd_list.append(yd)
         y_tensor = torch.stack(yd_list, dim=1)
         return y_tensor
@@ -170,8 +178,8 @@ class TensorBSplinesModel(torch.nn.Module):
         """
         x : 2D tensor of shape N X D
         """
-        N = x.shape[0]
-        D = x.shape[1]
+        # N = x.shape[0]
+        # D = x.shape[1]
         decimals = 1
         x_max, x_min = (torch.round(torch.max(x, dim=0).values, decimals=decimals),
                         torch.round_(torch.min(x, dim=0).values, decimals=decimals))
@@ -318,10 +326,12 @@ def test_regression():
     # https://scikit-learn.org/0.16/auto_examples/linear_model/plot_ols.html#example-linear-model-plot-ols-py
     # MLP Regressor
     dataset_name = "trig"
-    mlp_reg = MLPRegressor(hidden_layer_sizes=(100, 100), max_iter=5000, verbose=True, early_stopping=False)
+    iter = 10000
+    batch_size = 16
+    mlp_reg = MLPRegressor(hidden_layer_sizes=(50, 50), max_iter=iter, verbose=True, early_stopping=False,batch_size=batch_size)
     X, y = get_reg_data(dataset_name=dataset_name, n_samples=10000)
     D = X.shape[1]
-    b_splines_degree = 2
+    b_splines_degree = 1
     basis_dim = 51
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=SEED)
     N_train = X_train.shape[0]
@@ -338,6 +348,18 @@ def test_regression():
     print(f"numel for MLPRegressor for dataset {dataset_name} = {nel}")
     print(f"RMSE for MLP regressor for dataset {dataset_name} = {rmse_}")
 
+    ### splines Reg
+    ############## Add sklearn splines Regression code snippet ########################
+
+    # https://scikit-learn.org/stable/auto_examples/linear_model/plot_polynomial_interpolation.html
+    # https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.SplineTransformer.html#sklearn.preprocessing.SplineTransformer
+    model = make_pipeline(SplineTransformer(n_knots=100, degree=3), Ridge(alpha=1e-3))
+    model.fit(X_train, y_train)
+    y_hat = model.predict(X_test)
+    rmse_ = np.sqrt(mean_squared_error(y_true=y_test, y_pred=y_hat))
+    print(rmse_)
+    print("finnn")
+
     # TensorBSplines
     print("############## Training TensorBSplines Regressor ################")
     x_range = TensorBSplinesModel.get_data_range(X)  # get range based on complete dataset: train and test
@@ -345,20 +367,19 @@ def test_regression():
                                       degree=b_splines_degree)
 
     loss_fn = torch.nn.MSELoss()
-    batch_size = 64
     indices = list(np.arange(0, N_train))
-    optimizer = torch.optim.Adam(tns_reg.parameters(), lr=0.05)
+    optimizer = torch.optim.Adam(tns_reg.parameters(), lr=0.005)
     si = None
     alpha = 0.1
     start_time = datetime.now()
-    for i in tqdm(range(10000), desc="TensorBSplines Regression Training"):
+    for i in tqdm(range(iter), desc="TensorBSplines Regression Training"):
         optimizer.zero_grad()
         batch_idx = random.sample(population=indices, k=batch_size)
         X_batch = X_train[batch_idx, :]
         y_batch = y_train[batch_idx]
         y_hat = tns_reg(X_batch)
         lambda_ = 1e-3
-        loss = loss_fn(y_hat, y_batch.view(-1, 1)) + lambda_*tns_reg.norm()
+        loss = loss_fn(y_hat, y_batch.view(-1, 1)) + lambda_ * tns_reg.norm()
         if si is None:
             si = loss.item()
         else:
@@ -375,6 +396,8 @@ def test_regression():
     y_hat = tns_reg(torch.tensor(X_test))
     rmse_ = np.sqrt(mean_squared_error(y_true=y_test, y_pred=y_hat.detach().numpy()))
     print(f"RMSE for TensorBSplines regressor for dataset {dataset_name} = {rmse_}")
+
+
 
 
 if __name__ == '__main__':

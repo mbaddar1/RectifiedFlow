@@ -21,6 +21,13 @@ We generate $\pi_0$ and $\pi_1$ as two Gaussian mixture models with different mo
 
 We sample 10000 data points from $\pi_0$ and $\pi_1$, respectively,
 and store them in ```samples_0```, ```samples_1```.
+
+
+Material
+------------------
+Auto Knots selection
+https://arxiv.org/pdf/1808.01770
+https://cran.r-project.org/web/packages/crs/vignettes/spline_primer.pdf
 """
 import pickle
 import random
@@ -30,11 +37,18 @@ import torch
 import numpy as np
 import torch.nn as nn
 from sklearn.datasets import make_swiss_roll, make_circles, make_blobs
+from sklearn.linear_model import Ridge
+from sklearn.metrics import mean_squared_error
+from sklearn.neural_network import MLPRegressor
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import SplineTransformer
 from torch.distributions import Normal, Categorical
 from torch.distributions import Distribution
 from torch.distributions.multivariate_normal import MultivariateNormal
 from torch.distributions.mixture_same_family import MixtureSameFamily
 import matplotlib.pyplot as plt
+from torch.nn import MSELoss
+from torch.optim import lr_scheduler
 from tqdm import tqdm
 from RectifiedFlow.tutorial.seed import set_global_seed
 from RectifiedFlow.tutorial.tensor_bsplines_models import TensorBSplinesRegressor, TensorBSplinesModel
@@ -55,25 +69,27 @@ set_global_seed(SEED)
 
 
 @torch.no_grad()
-def draw_plot(rectified_flow, z0, z1, N=None, **kwargs):
-    print(f"Drawing plot for model of class : {type(rectified_flow)}")
-
-    assert isinstance(rectified_flow, (RectifiedFlowTT, RectifiedFlowNN))
+def draw_plot(recflow_model, z0, z1, N=None, **kwargs):
+    print(f"Drawing plot for model of class : {type(recflow_model)}")
+    assert isinstance(recflow_model, (RectifiedFlowTT, RectifiedFlowNN, RectifiedFlowTensorBsplines))
     fig_title_part = ""
-    if isinstance(rectified_flow, RectifiedFlowTT):
+    if isinstance(recflow_model, RectifiedFlowTT):
         suffix = "tt"
         fig_title_part += f"model=tt-recflow\nr={kwargs['r']},\nd={kwargs['d']}"
-    elif isinstance(rectified_flow, RectifiedFlowNN):
+    elif isinstance(recflow_model, RectifiedFlowNN):
         suffix = "nn"
         fig_title_part += f"model=nn-recflow"
+    elif isinstance(recflow_model, RectifiedFlowTensorBsplines):
+        suffix = "tb"
+        fig_title_part += f"model=tensor-bsplines-recflow"
     else:
-        raise ValueError(f"Unsupported recflow model type : {type(rectified_flow)}")
+        raise ValueError(f"Unsupported recflow model type : {type(recflow_model)}")
 
-    traj = rectified_flow.sample_ode(z0=z0, N=N)
+    traj = recflow_model.sample_ode(z0=z0, N=N)
     # Get sinkhorn value
     samples_loss_ = SamplesLoss()
     z1_gen = traj[-1]
-    if isinstance(rectified_flow, RectifiedFlowTT):
+    if isinstance(recflow_model, RectifiedFlowTT):
         z1_gen_filtered = filter_tensor(z1_gen)
     else:
         z1_gen_filtered = z1_gen
@@ -130,6 +146,9 @@ def get_train_tuple(z0=None, z1=None):
 
 def train_rectified_flow_nn(rectified_flow_nn, optimizer, pairs, batchsize, inner_iters):
     loss_curve = []
+    alpha = 0.1
+    loss_fn = torch.nn.MSELoss()
+    si = None
     for i in tqdm(range(inner_iters + 1), desc="training recflow-nn "):
         optimizer.zero_grad()
         indices = torch.randperm(len(pairs))[:batchsize]
@@ -139,8 +158,18 @@ def train_rectified_flow_nn(rectified_flow_nn, optimizer, pairs, batchsize, inne
         z_t, t, target = get_train_tuple(z0=z0, z1=z1)
 
         pred = rectified_flow_nn.model(z_t, t)
-        loss = (target - pred).view(pred.shape[0], -1).abs().pow(2).sum(dim=1)
-        loss = loss.mean()
+        loss = loss_fn(pred, target) # both losses are the same
+        # loss = 0.5 * (target - pred).view(pred.shape[0], -1).pow(2).sum(dim=1)
+        # loss = loss.mean()
+        if si is None:
+            si = loss.item()
+        else:
+            si = alpha * loss.item() + (1 - alpha) * si
+        if i % 100 == 0:
+            print(f"si for loss type {type(loss_fn)} @i = {i} => {si}")
+
+        with torch.no_grad():
+            l2 = loss_fn(target, pred)
         loss.backward()
 
         optimizer.step()
@@ -170,58 +199,83 @@ class MLP(nn.Module):
 
 class RectifiedFlowTensorBsplines:
     def __init__(self, basis_dim, x_range, input_dim, out_dim, basis_degree):
-        assert len(x_range) == out_dim
-        self.tns_bsp_regs = []
-        for d in range(out_dim):
-            self.tns_bsp_regs.append(
-                TensorBSplinesRegressor(input_dim=input_dim, basis_dim=basis_dim, x_range=x_range, degree=basis_degree))
+        assert len(x_range) == input_dim
+        self.tns_bsp_reg = TensorBSplinesRegressor(input_dim=input_dim, output_dim=out_dim, x_range=x_range,
+                                                   basis_dim=basis_dim, degree=basis_degree)
 
     # FIXME , repeated fn , need to make a base class for Recflow
     def sample_ode(self, z0: torch.Tensor, N: int):
-        pass
+        dt = 1. / N
+        traj = []  # to store the trajectory
+        z = z0.detach().clone()
+        batchsize = z.shape[0]
+        traj.append(z.detach().clone())
+        for i in tqdm(range(N), desc="generate tensor-b-splines trajectory"):
+            t = torch.ones((batchsize, 1)) * i / N
+            pred = self.v(z, t)
+            z = z.detach().clone() + pred * dt
+            traj.append(z.detach().clone())
+        return traj
 
     # FIXME , repeated fn , need to make a base class for Recflow
     def v(self, zt, t) -> torch.Tensor:
-        data_dim = zt.shape[1]
         zt_aug = torch.cat([zt, t], dim=1)
-        pred_list = []
-        for d in range(data_dim):
-            pred_vec = self.ETTs[d](zt_aug).view(-1, 1)
-            pred_list.append(pred_vec)
-        pred_tensor = torch.cat(tensors=pred_list, dim=1)
-        return pred_tensor
+        pred_vec = self.tns_bsp_reg(zt_aug)
+        return pred_vec
 
 
-def train_recflow_tensor_bsplines(recflow_tns: RectifiedFlowTensorBsplines, X0: torch.Tensor, X1: torch.Tensor,
+def train_recflow_tensor_bsplines(recflow_model: RectifiedFlowTensorBsplines, X0: torch.Tensor, X1: torch.Tensor,
                                   train_iterations: int, batch_size: int):
     z_t, t, target = get_train_tuple(z0=X0, z1=X1)
     z_t_aug = torch.concat([z_t, t], dim=1)
+    X = z_t_aug.detach().numpy()
+    y = target.detach().numpy()
+    ########## Splines Regression Quick Test #################
+
+    model = make_pipeline(SplineTransformer(n_knots=4096, degree=3, knots="quantile"), Ridge(alpha=1e-3))
+    model.fit(X, y)
+    y_hat = model.predict(X)
+    mse_ = mean_squared_error(y_true=y, y_pred=y_hat)
+    print(mse_)
+
+    mlpreg = MLPRegressor(verbose=True)
+    mlpreg.fit(X, y)
+    y_hat = mlpreg.predict(X)
+    mse2_ = mean_squared_error(y_true=y, y_pred=y_hat)
+    print("finnnnn")
+    ################################################
     loss_fn = torch.nn.MSELoss()
-    for i, tns_reg in enumerate(recflow_tns.tns_bsp_regs):
-        print(f"training for d = {i}")
-        params = tns_reg.parameters()
-        optimizer = torch.optim.Adam(params=params, lr=1e-3)
-        for j in tqdm(range(train_iterations), desc=f"tns reg opt for output dim  ={i}"):
-            """
-            indices = torch.randperm(len(pairs))[:batchsize]
-            batch = pairs[indices]
-            z0 = batch[:, 0].detach().clone()
-            z1 = batch[:, 1].detach().clone()
-            z_t, t, target = get_train_tuple(z0=z0, z1=z1)
-    
-            pred = rectified_flow_nn.model(z_t, t)
-            loss = (target - pred).view(pred.shape[0], -1).abs().pow(2).sum(dim=1)
-            """
+
+    params = recflow_model.tns_bsp_reg.parameters()
+    optimizer = torch.optim.Adam(params=params, lr=0.1)
+    scheduler = lr_scheduler.ExponentialLR(optimizer, gamma=0.5)
+
+    alpha = 0.1
+    si = None
+    sch_itr = 10
+    itr2 = int(train_iterations / sch_itr)
+    for j in tqdm(range(sch_itr), desc="Scheduler iterations"):
+        for i in tqdm(range(itr2), desc=f"Training iterations "):
             optimizer.zero_grad()
-            indices = torch.randperm(z_t_aug.shape[0])[:]
+            indices = torch.randperm(z_t_aug.shape[0])[:batch_size]
             z_t_aug_batch = z_t_aug[indices]
-            target_batch = target[indices][:, i]
-            y_hat = tns_reg(z_t_aug_batch)
+            target_batch = target[indices]
+            y_hat = recflow_model.tns_bsp_reg(z_t_aug_batch)
             loss = loss_fn(y_hat, target_batch)
-            print(loss.item())
+            if si is None:
+                si = loss.item()
+            else:
+                si = alpha * loss.item() + (1 - alpha) * si
+            if i % 10 == 0:
+                print(f"si, i = {i} = {si}")
             loss.backward()
             optimizer.step()
-        print(f"Finished training loop")
+        before_lr = optimizer.param_groups[0]["lr"]
+        scheduler.step()
+        after_lr = optimizer.param_groups[0]["lr"]
+        print("Epoch %d: lr %.4f -> %.4f" % (j, before_lr, after_lr))
+    print(f"Final EMA loss (si) over total # iter {train_iterations} = {si}")
+    print("Finished training")
 
 
 class RectifiedFlowTT:
@@ -239,7 +293,6 @@ class RectifiedFlowTT:
         traj = []  # to store the trajectory
         z = z0.detach().clone()
         batchsize = z.shape[0]
-
         traj.append(z.detach().clone())
         for i in tqdm(range(N), desc="generate tt-recflow trajectory"):
             t = torch.ones((batchsize, 1)) * i / N
@@ -303,6 +356,10 @@ def train_rectified_flow_tt(rectified_flow_tt: RectifiedFlowTT, x0, x1, reg_coef
         )
         ETT.tt.set_core(x0.shape[1])
     print("recflow-tt training finished")
+    v_ = rectified_flow_tt.v(z_t, t)
+    with torch.no_grad():
+        loss_fn = MSELoss()
+        k = loss_fn(v_, target)
     return rectified_flow_tt
 
 
@@ -360,6 +417,10 @@ def tt_recflow_hopt(init_model: Distribution, hopt_max_evals: int, target_datase
     print(f"Opt loss = {trials.best_trial['result']['loss']}")
 
 
+def compare_recflow_regression_models():
+    pass
+
+
 # Main
 if __name__ == '__main__':
     D = 10.
@@ -367,9 +428,9 @@ if __name__ == '__main__':
     VAR = 0.3
     DOT_SIZE = 4
     COMP = 3
-    n_samples = 10000
+    n_samples = 20000
     data_dim = 2
-    model_type = "tt"  # can be nn,tt,tb
+    model_type = "nn"  # can be nn,tt,tb
     # nn is neural network
     # tt is tensor train with legendre poly
     # tb tensor bsplines
@@ -397,6 +458,8 @@ if __name__ == '__main__':
     x_1 = samples_1.detach().clone()[torch.randperm(len(samples_1))]
     x0_test = initial_model.sample(torch.Size([2000]))
     x_pairs = torch.stack([x_0, x_1], dim=1)
+
+    # Experimental / Debugging function to compare all possible RecFlow Regression Models
 
     recflow_model = None
     if model_type == "nn":
@@ -439,11 +502,16 @@ if __name__ == '__main__':
             #   calculate for the same drawn data
             print("tt recflow training finished , next step is to generate samples ")
             draw_plot(recflow_model, z0=x0_test, z1=samples_1.detach().clone(), N=2000, r=ranks, d=basis_degree)
-    elif model_type=="tb":
+    elif model_type == "tb":
         x_range = TensorBSplinesModel.get_data_range(samples_0)
-        x_range.append([0,1]) # for time
-        tns_bsplines_reg = TensorBSplinesRegressor(input_dim=3,)
-        train_recflow_tensor_bsplines()
+        x_range.append([0, 1])  # for time
+        recflow_model = RectifiedFlowTensorBsplines(basis_dim=50 + 1, out_dim=2, x_range=x_range, input_dim=3,
+                                                    basis_degree=2)
+        train_recflow_tensor_bsplines(recflow_model=recflow_model, X0=samples_0, X1=samples_1,
+                                      train_iterations=1000, batch_size=16)
+        draw_plot(recflow_model, z0=x0_test, z1=samples_1.detach().clone(), N=2000)
+        print(f"finished")
+
     else:
         raise ValueError(f"Unsupported recflow model type : {type(model_type)}")
 

@@ -44,8 +44,9 @@ class BSplinesBasis:
         self.degree = degree
         self.n_knots = n_knots
         a1 = np.linspace(start=float(x_low), stop=x_high, num=n_knots)
-        step = (x_high - x_low) / n_knots
-        a2 = np.linspace(start=float(x_high + step), stop=float(x_high + degree * step), num=degree + 1)
+        # step = (x_high - x_low) / n_knots
+        slack = 0.01
+        a2 = np.linspace(start=float(x_high + slack), stop=float(x_high + slack + 0.01 * degree), num=degree + 1)
         self.u_ = np.concatenate([a1, a2])
         self.memory = {}
         self.all_calls = 0
