@@ -49,7 +49,7 @@ from torch.nn import MSELoss
 from torch.optim import lr_scheduler
 from tqdm import tqdm
 from RectifiedFlow.tutorial.seed import set_global_seed
-from RectifiedFlow.tutorial.tensor_bsplines_models import TensorBSplinesRegressor, TensorBSplinesModel
+from RectifiedFlow.tutorial.splines_models import TensorBSplinesRegressor, TensorBSplinesModel
 from functional_tt_fabrique import orthpoly, Extended_TensorTrain
 from geomloss import SamplesLoss
 from hyperopt import hp, fmin, tpe, Trials, STATUS_OK
@@ -65,6 +65,18 @@ from datetime import datetime
 # random.seed(SEED)
 # np.random.seed(SEED)
 # torch.manual_seed(SEED)
+
+class RBFReg(torch.nn.Module):
+    def __init__(self, c: torch.Tensor, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def forward(self, x):
+        pass
+
+    @staticmethod
+    def get_centers(X: torch.Tensor,n_centers : int):
+        pass
+
 
 class DummyReg(torch.nn.Module):
     def __init__(self, input_dim, output_dim, *args, **kwargs):
@@ -261,7 +273,7 @@ def train_recflow_reg_bsplines(recflow_model: RectifiedFlowRegBsplines, X0: torc
 
     params = recflow_model.model.parameters()
     optimizer = torch.optim.Adam(params=params, lr=0.1)
-    #scheduler = lr_scheduler.ExponentialLR(optimizer, gamma=0.5)
+    # scheduler = lr_scheduler.ExponentialLR(optimizer, gamma=0.5)
 
     alpha = 0.1
     si = None

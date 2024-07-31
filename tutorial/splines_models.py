@@ -77,18 +77,22 @@ import sys
 
 import torch.nn
 from sklearn.datasets import make_circles, make_moons, load_diabetes
+from sklearn.gaussian_process.kernels import RBF
 from sklearn.linear_model import Ridge
 from sklearn.metrics import accuracy_score, mean_squared_error
 from sklearn.model_selection import train_test_split
 from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import SplineTransformer
+from torch.nn import MSELoss
 from tqdm import tqdm
 from matplotlib import pyplot as plt
 import random
 from RectifiedFlow.tutorial.bsplines_basis import BSplinesBasis
 import numpy as np
 from datetime import datetime
+
+from RectifiedFlow.tutorial.ttde.torch_rbf import RBFLayer, basis_func_dict
 
 SEED = 42
 
@@ -98,6 +102,56 @@ torch.manual_seed(SEED)
 torch.cuda.manual_seed_all(SEED)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
+
+
+class RBFN(torch.nn.Module):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.rbf = RBFLayer(in_features=2, out_features=20, basis_func=basis_func_dict()["gaussian"])
+        self.linear = torch.nn.Linear(in_features=20,out_features=1)
+        self.model = torch.nn.Sequential(self.rbf,self.linear)
+    def forward(self,x):
+        return self.model(x)
+
+class RBFReg(torch.nn.Module):
+    def __init__(self, c: np.array, out_dim: int, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        n_centers = len(c)
+        self.c = torch.nn.Parameter(torch.tensor(c))
+        self.A = torch.nn.Linear(in_features=n_centers, out_features=out_dim)
+        self.l = torch.nn.Parameter(torch.tensor([1000.0]))
+
+    def forward(self, x):
+        # assert (x.shape[1] == len(self.c))
+        rbf_ = RBF(length_scale=self.l.detach().numpy())
+        feat = torch.tensor(rbf_(x.detach().numpy(), self.c.detach().numpy()))
+        y = self.A(feat)
+        return y.T
+
+    @staticmethod
+    def get_centers(X: torch.Tensor, n_centers: int):
+        x_min = torch.min(X, dim=0).values.detach().numpy()
+        x_max = torch.max(X, dim=0).values.detach().numpy()
+        return np.linspace(start=x_min, stop=x_max, num=n_centers, endpoint=True)
+
+
+def trainRBFreg(model: torch.nn.Module, X: torch.Tensor, y: torch.Tensor, max_iter: int, batch_size: int):
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-1)
+    loss_fn = MSELoss()
+    N = X.shape[0]
+    for i in tqdm(range(max_iter), desc="train rbf reg"):
+        optimizer.zero_grad()
+        indices = torch.randperm(N)[:batch_size]
+        X_batch = X[indices, :]
+        y_batch = y[indices]
+        y_hat = model(X_batch)
+        loss = loss_fn(y_batch, y_hat)
+        if i % 100 == 0:
+            print(loss.item())
+        loss.backward()
+        optimizer.step()
+    print(f"Training RBF Reg finished")
 
 
 def get_mlp_numel(mlp):
@@ -130,11 +184,11 @@ def get_reg_data(dataset_name, n_samples):
         X, y = data_.data, data_.target
         return torch.tensor(X), torch.tensor(y)
     elif dataset_name == "trig":
-        mvn_1 = torch.distributions.Normal(loc=0,scale=0.1)
+        mvn_1 = torch.distributions.Normal(loc=0, scale=0.1)
         mvn_2 = torch.distributions.MultivariateNormal(loc=torch.tensor([0.0, 0.0]), covariance_matrix=torch.eye(2))
         X = mvn_2.sample(sample_shape=torch.Size([n_samples]))
-        y = 0.2 + torch.sin(torch.pi/4.0*X[:, 0]) + 0.8 * torch.cos(2*torch.pi*X[:, 1])
-        y+= mvn_1.sample(sample_shape=torch.Size([n_samples]))
+        y = 0.2 + torch.sin(X[:, 0]) + 0.8 * torch.cos(X[:, 1])
+        y += mvn_1.sample(sample_shape=torch.Size([n_samples]))
         return X, y
     else:
         raise ValueError(f"unknown dataset_name = {dataset_name}")
@@ -148,7 +202,8 @@ class TensorBSplinesModel(torch.nn.Module):
             torch.distributions.Uniform(low=-0.01, high=0.01).sample(sample_shape=torch.Size([input_dim, basis_dim])))
             for
             _ in range(output_dim)])
-        self.b = torch.nn.Parameter(torch.distributions.Uniform(low=-0.1,high=0.1).sample(sample_shape=torch.Size([output_dim])))
+        self.b = torch.nn.Parameter(
+            torch.distributions.Uniform(low=-0.1, high=0.1).sample(sample_shape=torch.Size([output_dim])))
         assert input_dim == len(x_range)
         self.bsp = []
         for d in range(input_dim):
@@ -162,7 +217,7 @@ class TensorBSplinesModel(torch.nn.Module):
         basis_tensor = torch.tensor(basis_list).permute(1, 0, 2)
         yd_list = []
         for d in range(self.output_dim):
-            yd = torch.einsum('bij,ij->b', basis_tensor, self.A_list[d])+self.b[d]
+            yd = torch.einsum('bij,ij->b', basis_tensor, self.A_list[d]) + self.b[d]
             yd_list.append(yd)
         y_tensor = torch.stack(yd_list, dim=1)
         return y_tensor
@@ -327,37 +382,44 @@ def test_regression():
     # MLP Regressor
     dataset_name = "trig"
     iter = 10000
-    batch_size = 16
-    mlp_reg = MLPRegressor(hidden_layer_sizes=(50, 50), max_iter=iter, verbose=True, early_stopping=False,batch_size=batch_size)
+    batch_size = 64
+
     X, y = get_reg_data(dataset_name=dataset_name, n_samples=10000)
     D = X.shape[1]
     b_splines_degree = 1
     basis_dim = 51
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=SEED)
     N_train = X_train.shape[0]
+
+    ### RBF Reg
+    ############## Add RBF Reg ########################
+    c = RBFReg.get_centers(X=X, n_centers=10000)
+    #m = RBFReg(c=c, out_dim=1)
+    m = RBFN()
+    # y = m(torch.tensor(X))
+    trainRBFreg(model=m, X=X, y=y, max_iter=10000, batch_size=1024)
     print("########## Training MLP Regressor############")
     start_time = datetime.now()
+    mlp_reg = MLPRegressor(hidden_layer_sizes=(50, 50), max_iter=iter, verbose=True, early_stopping=False,
+                           batch_size=batch_size)
     mlp_reg.fit(X_train, y_train)
     end_time = datetime.now()
     y_hat = mlp_reg.predict(X_test)
-    rmse_ = np.sqrt(mean_squared_error(y_true=y_test, y_pred=y_hat))
+    mse_ = mean_squared_error(y_true=y_test, y_pred=y_hat)
 
     print(
         f"MLP Regression training time for dataset {dataset_name} = {(end_time - start_time).microseconds} microseconds")
     nel = get_mlp_numel(mlp_reg)
     print(f"numel for MLPRegressor for dataset {dataset_name} = {nel}")
-    print(f"RMSE for MLP regressor for dataset {dataset_name} = {rmse_}")
-
-    ### splines Reg
-    ############## Add sklearn splines Regression code snippet ########################
+    print(f"MSE for MLP regressor for dataset {dataset_name} = {mse_}")
 
     # https://scikit-learn.org/stable/auto_examples/linear_model/plot_polynomial_interpolation.html
     # https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.SplineTransformer.html#sklearn.preprocessing.SplineTransformer
     model = make_pipeline(SplineTransformer(n_knots=100, degree=3), Ridge(alpha=1e-3))
     model.fit(X_train, y_train)
     y_hat = model.predict(X_test)
-    rmse_ = np.sqrt(mean_squared_error(y_true=y_test, y_pred=y_hat))
-    print(rmse_)
+    mse_ = mean_squared_error(y_true=y_test, y_pred=y_hat)
+    print(f"B splines sklearn reg mse {mse_}")
     print("finnn")
 
     # TensorBSplines
@@ -396,8 +458,6 @@ def test_regression():
     y_hat = tns_reg(torch.tensor(X_test))
     rmse_ = np.sqrt(mean_squared_error(y_true=y_test, y_pred=y_hat.detach().numpy()))
     print(f"RMSE for TensorBSplines regressor for dataset {dataset_name} = {rmse_}")
-
-
 
 
 if __name__ == '__main__':
