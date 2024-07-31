@@ -159,7 +159,7 @@ def get_score_fn(sde, model, train=False, continuous=False):
         std = sde.marginal_prob(torch.zeros_like(x), t)[1]
       else:
         # For VP-trained models, t=0 corresponds to the lowest noise level
-        labels = t * (sde.N - 1)
+        labels = t * (sde.__N - 1)
         score = model_fn(x, labels)
         std = sde.sqrt_1m_alphas_cumprod.to(labels.device)[labels.long()]
 
@@ -173,7 +173,7 @@ def get_score_fn(sde, model, train=False, continuous=False):
       else:
         # For VE-trained models, t=0 corresponds to the highest noise level
         labels = sde.T - t
-        labels *= sde.N - 1
+        labels *= sde.__N - 1
         labels = torch.round(labels).long()
 
       score = model_fn(x, labels)

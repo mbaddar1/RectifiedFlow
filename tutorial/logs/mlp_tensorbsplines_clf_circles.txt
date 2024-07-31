@@ -1,0 +1,102 @@
+clf
+circles
+
+
+/home/mbaddar/Documents/mbaddar/phd/genmodel/genmodel39_venv/bin/python /home/mbaddar/Documents/mbaddar/phd/genmodel/RectifiedFlow/tutorial/test_tensor_bsplines_clf_reg.py
+##########################################################
+################# Test Classification ####################
+##########################################################
+Iteration 1, loss = 0.69345091
+Iteration 2, loss = 0.65261005
+Iteration 3, loss = 0.62951818
+Iteration 4, loss = 0.61928279
+Iteration 5, loss = 0.63046884
+Iteration 6, loss = 0.63217431
+Iteration 7, loss = 0.62512089
+Iteration 8, loss = 0.62801596
+Iteration 9, loss = 0.61858060
+Iteration 10, loss = 0.60678562
+Iteration 11, loss = 0.60312194
+Iteration 12, loss = 0.60266372
+Iteration 13, loss = 0.60656421
+Iteration 14, loss = 0.60814204
+Iteration 15, loss = 0.60636508
+Iteration 16, loss = 0.61601511
+Iteration 17, loss = 0.61309719
+Iteration 18, loss = 0.62202348
+Iteration 19, loss = 0.60289482
+Iteration 20, loss = 0.60568157
+Iteration 21, loss = 0.60881824
+Iteration 22, loss = 0.59991915
+Iteration 23, loss = 0.60290011
+Iteration 24, loss = 0.60189022
+Iteration 25, loss = 0.60250763
+Iteration 26, loss = 0.60064288
+Iteration 27, loss = 0.60822895
+Iteration 28, loss = 0.60529901
+Iteration 29, loss = 0.60821142
+Iteration 30, loss = 0.60526778
+Iteration 31, loss = 0.60282705
+Iteration 32, loss = 0.61387162
+Iteration 33, loss = 0.60842966
+Training loss did not improve more than tol=0.000100 for 10 consecutive epochs. Stopping.
+MLP Classifier training time for dataset : circles= 166374 micro-secs
+MLP Classifier numel = 401
+MLP Classifier Accuracy for dataset circles= 1.0
+training:   0%|          | 0/5001 [00:00<?, ?it/s]iter = 0 , si = 0.7001241198671574, acc = 0.4375
+training:   2%|▏         | 99/5001 [00:05<01:11, 68.57it/s]iter = 100 , si = 0.14282975114881902, acc = 0.96875
+training:   4%|▍         | 199/5001 [00:06<00:51, 93.50it/s]iter = 200 , si = 0.06929497408408013, acc = 1.0
+training:   6%|▌         | 299/5001 [00:07<00:51, 90.70it/s]iter = 300 , si = 0.04150523860527976, acc = 1.0
+training:   8%|▊         | 397/5001 [00:08<00:50, 91.81it/s]iter = 400 , si = 0.027940960827436225, acc = 1.0
+training:  10%|▉         | 497/5001 [00:10<00:49, 90.50it/s]iter = 500 , si = 0.020253734272142637, acc = 1.0
+training:  12%|█▏        | 597/5001 [00:11<00:46, 94.55it/s]iter = 600 , si = 0.015441884943478238, acc = 1.0
+training:  14%|█▍        | 697/5001 [00:12<00:45, 94.92it/s]iter = 700 , si = 0.01221001210427647, acc = 1.0
+training:  16%|█▌        | 797/5001 [00:13<00:44, 95.25it/s]iter = 800 , si = 0.009922771838511828, acc = 1.0
+training:  18%|█▊        | 897/5001 [00:14<00:43, 95.12it/s]iter = 900 , si = 0.008237592496768534, acc = 1.0
+training:  20%|█▉        | 997/5001 [00:15<00:41, 95.47it/s]iter = 1000 , si = 0.006955808023928358, acc = 1.0
+training:  22%|██▏       | 1097/5001 [00:16<00:40, 96.08it/s]iter = 1100 , si = 0.005955368966996799, acc = 1.0
+training:  24%|██▍       | 1197/5001 [00:17<00:39, 95.52it/s]iter = 1200 , si = 0.0051577079416491945, acc = 1.0
+training:  26%|██▌       | 1297/5001 [00:18<00:38, 96.05it/s]iter = 1300 , si = 0.0045102574041354015, acc = 1.0
+training:  28%|██▊       | 1397/5001 [00:19<00:37, 96.24it/s]iter = 1400 , si = 0.0039766865789482115, acc = 1.0
+training:  30%|██▉       | 1497/5001 [00:20<00:36, 97.24it/s]iter = 1500 , si = 0.0035311835898176273, acc = 1.0
+training:  32%|███▏      | 1597/5001 [00:21<00:35, 96.12it/s]iter = 1600 , si = 0.0031549686533952374, acc = 1.0
+training:  34%|███▍      | 1697/5001 [00:22<00:34, 95.64it/s]iter = 1700 , si = 0.002834092636297665, acc = 1.0
+training:  36%|███▌      | 1797/5001 [00:23<00:33, 95.95it/s]iter = 1800 , si = 0.002558004552971724, acc = 1.0
+training:  38%|███▊      | 1897/5001 [00:24<00:32, 95.83it/s]iter = 1900 , si = 0.0023185944207711746, acc = 1.0
+training:  40%|███▉      | 1997/5001 [00:25<00:31, 95.73it/s]iter = 2000 , si = 0.002109538591977834, acc = 1.0
+training:  42%|████▏     | 2097/5001 [00:26<00:30, 95.87it/s]iter = 2100 , si = 0.0019258425490371696, acc = 1.0
+training:  44%|████▍     | 2197/5001 [00:27<00:29, 95.67it/s]iter = 2200 , si = 0.0017635155885467005, acc = 1.0
+training:  46%|████▌     | 2297/5001 [00:28<00:28, 95.72it/s]iter = 2300 , si = 0.0016193354229722262, acc = 1.0
+training:  48%|████▊     | 2397/5001 [00:29<00:27, 95.86it/s]iter = 2400 , si = 0.0014906752326386225, acc = 1.0
+training:  50%|████▉     | 2497/5001 [00:30<00:26, 95.93it/s]iter = 2500 , si = 0.0013753748270232185, acc = 1.0
+training:  52%|█████▏    | 2597/5001 [00:32<00:25, 95.93it/s]iter = 2600 , si = 0.0012716434424362546, acc = 1.0
+training:  54%|█████▍    | 2697/5001 [00:33<00:23, 96.00it/s]iter = 2700 , si = 0.0011779855509639245, acc = 1.0
+training:  56%|█████▌    | 2797/5001 [00:34<00:22, 96.00it/s]iter = 2800 , si = 0.001093143624325161, acc = 1.0
+training:  58%|█████▊    | 2897/5001 [00:35<00:21, 96.07it/s]iter = 2900 , si = 0.0010160535397036213, acc = 1.0
+training:  60%|█████▉    | 2997/5001 [00:36<00:20, 95.70it/s]iter = 3000 , si = 0.0009458095159635496, acc = 1.0
+training:  62%|██████▏   | 3097/5001 [00:37<00:20, 94.54it/s]iter = 3100 , si = 0.0008816363081828346, acc = 1.0
+training:  64%|██████▍   | 3197/5001 [00:38<00:18, 95.92it/s]iter = 3200 , si = 0.0008228669827980231, acc = 1.0
+training:  66%|██████▌   | 3297/5001 [00:39<00:17, 96.09it/s]iter = 3300 , si = 0.0007689250215698667, acc = 1.0
+training:  68%|██████▊   | 3397/5001 [00:40<00:16, 95.94it/s]iter = 3400 , si = 0.0007193098112451486, acc = 1.0
+training:  70%|██████▉   | 3497/5001 [00:41<00:16, 93.49it/s]iter = 3500 , si = 0.0006735848018565325, acc = 1.0
+training:  72%|███████▏  | 3597/5001 [00:42<00:15, 91.89it/s]iter = 3600 , si = 0.0006313677838128129, acc = 1.0
+training:  74%|███████▍  | 3697/5001 [00:43<00:13, 94.16it/s]iter = 3700 , si = 0.0005923228587608685, acc = 1.0
+training:  76%|███████▌  | 3797/5001 [00:44<00:12, 94.07it/s]iter = 3800 , si = 0.0005561537732042663, acc = 1.0
+training:  78%|███████▊  | 3897/5001 [00:45<00:11, 95.06it/s]iter = 3900 , si = 0.0005225983552370759, acc = 1.0
+training:  80%|███████▉  | 3997/5001 [00:46<00:10, 95.37it/s]iter = 4000 , si = 0.0004914238493636441, acc = 1.0
+training:  82%|████████▏ | 4097/5001 [00:47<00:09, 95.24it/s]iter = 4100 , si = 0.0004624229864689474, acc = 1.0
+training:  84%|████████▍ | 4197/5001 [00:48<00:08, 96.02it/s]iter = 4200 , si = 0.0004354106586743307, acc = 1.0
+training:  86%|████████▌ | 4297/5001 [00:49<00:07, 96.07it/s]iter = 4300 , si = 0.00041022109433706534, acc = 1.0
+training:  88%|████████▊ | 4397/5001 [00:50<00:06, 95.78it/s]iter = 4400 , si = 0.00038670544851672413, acc = 1.0
+training:  90%|████████▉ | 4497/5001 [00:52<00:05, 95.43it/s]iter = 4500 , si = 0.000364729740098386, acc = 1.0
+training:  92%|█████████▏| 4597/5001 [00:53<00:04, 95.64it/s]iter = 4600 , si = 0.0003441730793812343, acc = 1.0
+training:  94%|█████████▍| 4697/5001 [00:54<00:03, 95.91it/s]iter = 4700 , si = 0.0003249261400302717, acc = 1.0
+training:  96%|█████████▌| 4797/5001 [00:55<00:02, 96.08it/s]iter = 4800 , si = 0.0003068898373971188, acc = 1.0
+training:  98%|█████████▊| 4897/5001 [00:56<00:01, 95.96it/s]iter = 4900 , si = 0.0002899741817641036, acc = 1.0
+training: 100%|██████████| 5001/5001 [00:57<00:00, 87.28it/s]
+iter = 5000 , si = 0.00027409728037898446, acc = 1.0
+TensorBSplines training time for dataset : circles = 301859 micro-secs
+TensorBSplinesClassifier numel 22
+TensorBSplines Classifier Accuracy for dataset circles =0.9921875
+
+Process finished with exit code 0

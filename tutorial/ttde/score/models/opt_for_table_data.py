@@ -24,7 +24,7 @@ class PAsTTOptBase(MutableModule):
         rank: int,
     ):
         assert n_components >= 1
-        n_dims = len(bases.knots)
+        n_dims = len(bases.u_)
 
         print('creating permutations...')
         permutations = [jnp.arange(n_dims)]
@@ -42,7 +42,7 @@ class PAsTTOptBase(MutableModule):
 
     @property
     def n_dims(self):
-        return self.bases.knots.shape[0]
+        return self.bases.u_.shape[0]
 
     def p(self, x):
         return jnp.exp(self.log_p(x))
